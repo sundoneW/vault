@@ -15,6 +15,18 @@ terraform {
 data "enos_environment" "localhost" {}
 
 locals {
+  package_install_env = {
+    arch = {
+      "amd64" = "x86_64"
+      "arm64" = "aarch64"
+    }
+    "packages"        = join(" ", var.packages)
+    "package_manager" = var.package_manager
+  }
+  distro_version_sles = {
+    "v15_sp4_standard" = "15.4"
+    "v15_sp5_standard" = "15.5"
+  }
   audit_device_file_path = "/var/log/vault/vault_audit.log"
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
@@ -66,7 +78,32 @@ resource "enos_bundle_install" "consul" {
   }
 }
 
+# For SUSE distros (Leap and SLES), we need to manually install some
+# packages in order to install Vault RPM packages later.
+resource "enos_remote_exec" "install_rpm_dependencies" {
+  for_each = {
+    for idx, host in var.target_hosts : idx => var.target_hosts[idx]
+    if length(var.packages) > 0
+  }
+
+  environment = {
+    ARCH            = local.package_install_env.arch[var.arch]
+    PACKAGE_MANAGER = local.package_install_env["package_manager"]
+  }
+
+  scripts = [abspath("${path.module}/scripts/install-rpm-dependencies.sh")]
+
+  transport = {
+    ssh = {
+      host = each.value.public_ip
+    }
+  }
+}
+
 resource "enos_bundle_install" "vault" {
+  depends_on = [
+    enos_remote_exec.install_rpm_dependencies,
+  ]
   for_each = var.target_hosts
 
   destination = var.install_dir
@@ -89,6 +126,21 @@ module "install_packages" {
 
   hosts    = var.target_hosts
   packages = var.packages
+
+  # environment = {
+  #   ARCH            = local.package_install_env.arch[var.arch]
+  #   PACKAGES        = local.package_install_env["packages"]
+  #   PACKAGE_MANAGER = local.package_install_env["package_manager"]
+  #   SLES_VERSION    = local.distro_version_sles[var.distro_version_sles]
+  # }
+
+  # scripts = [abspath("${path.module}/scripts/install-packages.sh")]
+
+  # transport = {
+  #   ssh = {
+  #     host = each.value.public_ip
+  #   }
+  # }
 }
 
 resource "enos_consul_start" "consul" {
@@ -321,3 +373,11 @@ resource "enos_remote_exec" "enable_audit_devices" {
     }
   }
 }
+
+# resource "enos_local_exec" "wait_for_install_packages" {
+#   depends_on = [
+#     enos_remote_exec.install_packages,
+#   ]
+
+#   inline = ["true"]
+# }
