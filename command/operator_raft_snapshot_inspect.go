@@ -5,12 +5,17 @@ package command
 
 import (
 	"fmt"
+	"io"
+	"math"
 	"os"
 	"strings"
 
-	"github.com/hashicorp/consul/snapshot"
+	protoio "github.com/gogo/protobuf/io"
 	"github.com/hashicorp/go-hclog"
+	iradix "github.com/hashicorp/go-immutable-radix"
 	"github.com/hashicorp/raft"
+	snapshot "github.com/hashicorp/raft-snapshot"
+	"github.com/hashicorp/vault/sdk/plugin/pb"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -94,27 +99,30 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	defer f.Close()
 
 	// TODO: skipping state.bin logic for now
-	var readFile *os.File
-	var meta *raft.SnapshotMeta
+	// var readFile *os.File
+	// var meta *raft.SnapshotMeta
+
+	// testing...
+	parseSnapshotNew(hclog.New(nil), f)
 
 	// TODO: should we use consul's snapshot reader or raft-snapshot repo?
 	// Decided to use this because it was more complete that read from raft-snapshot
-	readFile, meta, err = snapshot.Read(hclog.New(nil), f)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error reading snapshot: %s", err))
-		return 1
-	}
-	fmt.Println("readFile", readFile.Name())
-	defer func() {
-		if err := readFile.Close(); err != nil {
-			c.UI.Error(fmt.Sprintf("Failed to close temp snapshot: %v", err))
-		}
-		if err := os.Remove(readFile.Name()); err != nil {
-			c.UI.Error(fmt.Sprintf("Failed to clean up temp snapshot: %v", err))
-		}
-	}()
+	// readFile, meta, err = snapshot.Read(hclog.New(nil), f)
+	// if err != nil {
+	// 	c.UI.Error(fmt.Sprintf("Error reading snapshot: %s", err))
+	// 	return 1
+	// }
+	// fmt.Println("readFile", readFile.Name())
+	// defer func() {
+	// 	if err := readFile.Close(); err != nil {
+	// 		c.UI.Error(fmt.Sprintf("Failed to close temp snapshot: %v", err))
+	// 	}
+	// 	if err := os.Remove(readFile.Name()); err != nil {
+	// 		c.UI.Error(fmt.Sprintf("Failed to clean up temp snapshot: %v", err))
+	// 	}
+	// }()
 
-	fmt.Printf("META %+v\n", *meta)
+	// fmt.Printf("META %+v\n", *meta)
 
 	// OLD for snapshot save
 	// f := c.Flags()
@@ -166,4 +174,126 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	// 	return 2
 	// }
 	return 0
+}
+
+func parseSnapshotNew(logger hclog.Logger, in io.Reader) (*raft.SnapshotMeta, *iradix.Tree, error) {
+	// file, err := os.Open(filename)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	// defer file.Close()
+
+	reader, writer := io.Pipe()
+
+	protoReader := protoio.NewDelimitedReader(reader, math.MaxInt32)
+	defer protoReader.Close()
+
+	errCh := make(chan error, 2)
+
+	var meta *raft.SnapshotMeta
+	go func() {
+		var err error
+		meta, err = snapshot.Parse(file, writer)
+		writer.Close()
+		errCh <- err
+	}()
+
+	// txn := iradix.New().Txn()
+
+	// go func() {
+	// 	for {
+	// 		s := new(pb.StorageEntry)
+	// 		err := protoReader.ReadMsg(s)
+	// 		if err != nil {
+	// 			if err == io.EOF {
+	// 				errCh <- nil
+	// 				return
+	// 			}
+	// 			errCh <- err
+	// 			return
+	// 		}
+
+	// 		var value interface{} = struct{}{}
+	// 		if loadValues {
+	// 			value = s.Value
+	// 		}
+
+	// 		txn.Insert([]byte(s.Key), value)
+	// 	}
+	// }()
+
+	// err = <-errCh
+	// if err != nil && err != io.EOF {
+	// 	return nil, nil, err
+	// }
+
+	// err = <-errCh
+	// if err != nil && err != io.EOF {
+	// 	return nil, nil, err
+	// }
+
+	// data := txn.Commit()
+
+	// return meta, data, nil
+}
+
+func parseSnapshot(filename string, loadValues bool) (*raft.SnapshotMeta, *iradix.Tree, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	reader, writer := io.Pipe()
+
+	protoReader := protoio.NewDelimitedReader(reader, math.MaxInt32)
+	defer protoReader.Close()
+
+	errCh := make(chan error, 2)
+
+	var meta *raft.SnapshotMeta
+	go func() {
+		var err error
+		meta, err = snapshot.Parse(file, writer)
+		writer.Close()
+		errCh <- err
+	}()
+
+	txn := iradix.New().Txn()
+
+	go func() {
+		for {
+			s := new(pb.StorageEntry)
+			err := protoReader.ReadMsg(s)
+			if err != nil {
+				if err == io.EOF {
+					errCh <- nil
+					return
+				}
+				errCh <- err
+				return
+			}
+
+			var value interface{} = struct{}{}
+			if loadValues {
+				value = s.Value
+			}
+
+			txn.Insert([]byte(s.Key), value)
+		}
+	}()
+
+	err = <-errCh
+	if err != nil && err != io.EOF {
+		return nil, nil, err
+	}
+
+	err = <-errCh
+	if err != nil && err != io.EOF {
+		return nil, nil, err
+	}
+
+	data := txn.Commit()
+
+	return meta, data, nil
 }
