@@ -15,7 +15,6 @@ import (
 	"io"
 	"math"
 	"os"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,7 +25,6 @@ import (
 	// protoio "github.com/gogo/protobuf/io"
 	protoio "github.com/hashicorp/vault/physical/raft"
 
-	"github.com/hashicorp/consul-net-rpc/go-msgpack/codec"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/vault/sdk/plugin/pb"
@@ -39,36 +37,8 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorRaftSnapshotInspectCommand)(nil)
 )
 
-// SnapshotHeader is the first entry in our snapshot
-type SnapshotHeader struct {
-	// LastIndex is the last index that affects the data.
-	// This is used when we do the restore for watchers.
-	LastIndex uint64
-}
-
-// MsgpackHandle is a shared handle for encoding/decoding msgpack payloads
-var MsgpackHandle = &codec.MsgpackHandle{
-	RawToString: true,
-	BasicHandle: codec.BasicHandle{
-		DecodeOptions: codec.DecodeOptions{
-			MapType: reflect.TypeOf(map[string]interface{}{}),
-		},
-	},
-}
-
-// countingReader helps keep track of the bytes we have read
-// when reading snapshots
-type countingReader struct {
-	wrappedReader io.Reader
-	read          int
-}
-
-func (r *countingReader) Read(p []byte) (n int, err error) {
-	n, err = r.wrappedReader.Read(p)
-	if err == nil {
-		r.read += n
-	}
-	return n, err
+type OperatorRaftSnapshotInspectCommand struct {
+	*BaseCommand
 }
 
 type MetadataInfo struct {
@@ -88,15 +58,31 @@ type typeStats struct {
 // // SnapshotInfo is used for passing snapshot stat
 // // information between functions
 type SnapshotInfo struct {
-	Meta        MetadataInfo
-	Stats       map[uint8]typeStats
+	Meta MetadataInfo
+	// Note: we are not calculating these stats in v1
+	// Stats       map[uint8]typeStats
 	StatsKV     map[string]typeStats
 	TotalSize   int
 	TotalSizeKV int
 }
 
-type OperatorRaftSnapshotInspectCommand struct {
-	*BaseCommand
+// countingReader helps keep track of the bytes we have read
+// when reading snapshots
+type countingReader struct {
+	wrappedReader io.Reader
+	read          int
+}
+
+func (r *countingReader) Read(p []byte) (n int, err error) {
+	fmt.Println("======== CountingReader ==========")
+	fmt.Println("reading into buffer p", len(p))
+	n, err = r.wrappedReader.Read(p)
+	fmt.Println("bytes read according to reader", n)
+	if err == nil {
+		r.read += n
+	}
+	fmt.Println("======== CountingReader ==========")
+	return n, err
 }
 
 func (c *OperatorRaftSnapshotInspectCommand) Synopsis() string {
@@ -105,18 +91,19 @@ func (c *OperatorRaftSnapshotInspectCommand) Synopsis() string {
 
 func (c *OperatorRaftSnapshotInspectCommand) Help() string {
 	helpText := `
-Usage: vault operator raft snapshot inspect <snapshot_file>
-
-  Inspects a snapshot file.
-
-         $ vault operator raft snapshot inspect raft.snap
-
-`
+	Usage: vault operator raft snapshot inspect <snapshot_file>
+	
+	Inspects a snapshot file.
+	
+	$ vault operator raft snapshot inspect raft.snap
+	
+	`
 	c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
 }
 
+// TODO: add following flags: kvdetails, kvdepth, kvfilter, format
 func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
 
@@ -129,86 +116,6 @@ func (c *OperatorRaftSnapshotInspectCommand) AutocompleteArgs() complete.Predict
 
 func (c *OperatorRaftSnapshotInspectCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
-}
-
-func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, size int, info *SnapshotInfo) {
-	// TODO: add this as option
-	// if c.kvDetails {
-	// if keyType != "KVS" {
-	// 	return
-	// }
-
-	// fmt.Println("IN KVENHANCE")
-	// fmt.Printf("VAL (%T) %+v\n", val, val)
-
-	// have to coerce this into a usable type here or this won't work
-	// keyVal := val.(map[string]interface{})
-
-	// check for whether a filter is specified. if it is, skip
-	// any keys that don't match.
-	// if len(c.kvFilter) > 0 && !strings.HasPrefix(v.(string), c.kvFilter) {
-	// 	break
-	// }
-
-	// v := val.Value
-	fmt.Printf("v.Key %+v\n", val.Key)
-	// fmt.Printf("v.Value %+v\n", string(v))
-	split := strings.Split(string(val.Key), "/")
-	// fmt.Println("split", split)
-
-	// handle the situation where the key is shorter than
-	// the specified depth.
-	// TEMP: hard coding this
-	actualDepth := 3
-	if 3 > len(split) {
-		actualDepth = len(split)
-	}
-	prefix := strings.Join(split[0:actualDepth], "/")
-	kvs := info.StatsKV[prefix]
-	if kvs.Name == "" {
-		kvs.Name = prefix
-	}
-
-	kvs.Sum += size
-	kvs.Count++
-	info.TotalSizeKV += size
-	info.StatsKV[prefix] = kvs
-}
-
-func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotInfo, error) {
-	info := SnapshotInfo{
-		// Stats:       make(map[uint8]typeStats),
-		StatsKV:     make(map[string]typeStats),
-		TotalSize:   0,
-		TotalSizeKV: 0,
-	}
-
-	cr := &countingReader{wrappedReader: file}
-
-	handler := func(reader *countingReader, s *pb.StorageEntry) error {
-		// name := string(msg)
-		// s := info.Stats[msg]
-		// if s.Name == "" {
-		// 	s.Name = name
-		// }
-
-		// size := cr.read - info.TotalSize
-		// s.Sum += size
-		// s.Count++
-		info.TotalSize = cr.read
-		// info.Stats[msg] = s
-
-		c.kvEnhance(s, reader.read, &info)
-
-		return nil
-	}
-
-	_, err := ReadSnapshot(cr, handler)
-	if err != nil {
-		return info, err
-	}
-	// fmt.Println(">>>>>>>> Irixdata", tree.Root())
-	return info, nil
 }
 
 func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
@@ -281,12 +188,14 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	}
 
 	// Restructures stats given above to be human readable
-	formattedStats := generateStats(info)
+	// Note: v1 does not calculate these stats
+	// formattedStats := generateStats(info)
 	formattedStatsKV := generateKVStats(info)
 
 	in := &OutputFormat{
-		Meta:        metaformat,
-		Stats:       formattedStats,
+		Meta: metaformat,
+		// Note: v1 does not calculate stats
+		// Stats:       formattedStats,
 		StatsKV:     formattedStatsKV,
 		TotalSize:   info.TotalSize,
 		TotalSizeKV: info.TotalSizeKV,
@@ -302,25 +211,112 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	return 0
 }
 
+func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, size int, info *SnapshotInfo) {
+	// TODO: add this as option
+	// if c.kvDetails {
+	// if keyType != "KVS" {
+	// 	return
+	// }
+
+	// have to coerce this into a usable type here or this won't work
+	// keyVal := val.(map[string]interface{})
+
+	// check for whether a filter is specified. if it is, skip
+	// any keys that don't match.
+	// if len(c.kvFilter) > 0 && !strings.HasPrefix(v.(string), c.kvFilter) {
+	// 	break
+	// }
+
+	fmt.Println("====================== kvEnhance ======================")
+	key := val.Key
+	fmt.Printf(">>> Key %+v\n", key)
+	split := strings.Split(string(val.Key), "/")
+	fmt.Printf("Split Key %+v\n", split)
+
+	// This is a test delete
+	value := val.Value
+	fmt.Println("length of value bytes", len(value))
+	fmt.Println("size from cr", size)
+
+	// handle the situation where the key is shorter than
+	// the specified depth.
+	// TEMP: hard coding this
+	ckvDepth := 2
+	actualDepth := ckvDepth
+	if ckvDepth > len(split) {
+		actualDepth = len(split)
+	}
+
+	prefix := strings.Join(split[0:actualDepth], "/")
+	kvs := info.StatsKV[prefix]
+	if kvs.Name == "" {
+		kvs.Name = prefix
+	}
+
+	fmt.Println("Prefix", prefix)
+
+	kvs.Sum += size
+	kvs.Count++
+	info.TotalSizeKV += size
+	info.StatsKV[prefix] = kvs
+
+	fmt.Printf("Current state of info.StatsKV %+v\n", info.StatsKV)
+	fmt.Println("====================== kvEnhance ======================")
+}
+
+func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotInfo, error) {
+	info := SnapshotInfo{
+		// we are not calculating these stats in v1
+		// Stats:       make(map[uint8]typeStats),
+		StatsKV:     make(map[string]typeStats),
+		TotalSize:   0,
+		TotalSizeKV: 0,
+	}
+
+	cr := &countingReader{wrappedReader: file}
+
+	handler := func(s *pb.StorageEntry) error {
+		// name := string(msg)
+		// s := info.Stats[msg]
+		// if s.Name == "" {
+		// 	s.Name = name
+		// }
+
+		// size := cr.read - info.TotalSize
+		// s.Sum += size
+		// s.Count++
+		info.TotalSize = cr.read
+		// info.Stats[msg] = s
+
+		c.kvEnhance(s, cr.read, &info)
+
+		return nil
+	}
+
+	_, err := ReadSnapshot(cr, handler)
+	if err != nil {
+		return info, err
+	}
+	// fmt.Println(">>>>>>>> Irixdata", tree.Root())
+	return info, nil
+}
+
 // ReadSnapshot decodes each message type and utilizes the handler function to
 // process each message type individually
-func ReadSnapshot(r *countingReader, handler func(r *countingReader, s *pb.StorageEntry) error) (*iradix.Tree, error) {
+func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*iradix.Tree, error) {
 	protoReader := protoio.NewDelimitedReader(r, math.MaxInt32)
 	defer protoReader.Close()
 
 	errCh := make(chan error, 1)
 
 	txn := iradix.New().Txn()
-	// msgType := make([]byte, 1)
 	go func() {
 		for {
 			s := new(pb.StorageEntry)
 			err := protoReader.ReadMsg(s)
 
-			// state:{NoUnkeyedLiterals:{} DoNotCompare:[] DoNotCopy:[] atomicMessageInfo:0x14002d17278} sizeCache:0 unknownFields:[] Key:core/wrapping/jwtkey
-
 			// TODO: call handler here to calculate info stats
-			handler(r, s)
+			handler(s)
 
 			if err != nil {
 				if err == io.EOF {
@@ -351,53 +347,6 @@ func ReadSnapshot(r *countingReader, handler func(r *countingReader, s *pb.Stora
 	data := txn.Commit()
 
 	return data, nil
-
-	//// Reading one protobuf at a time
-	// protoReader := protoio.NewDelimitedReader(r, math.MaxInt32)
-	// defer protoReader.Close()
-
-	// s := new(pb.StorageEntry)
-	// err := protoReader.ReadMsg(s)
-
-	// fmt.Printf(">>>>> Read snapshot contents from protobuf stream:\n %+v\n", *s)
-
-	// fmt.Println("end of reading current protobuf chunk")
-
-	// if err != nil {
-	// 	fmt.Println(">>>>>>> FAILURE", err)
-	// }
-
-	// return nil
-
-	// OLD CONSUL DECODING LOGIC
-	// dec := codec.NewDecoder(r, structs.MsgpackHandle)
-
-	// // Read in the header
-	// var header SnapshotHeader
-	// if err := dec.Decode(&header); err != nil {
-	// 	fmt.Println("DECODING ERROR HERE")
-	// 	fmt.Println("dec.Decode ERROR", err)
-	// 	return err
-	// }
-
-	// // Populate the new state
-	// msgType := make([]byte, 1)
-	// for {
-	// 	// Read the message type
-	// 	_, err := r.Read(msgType)
-	// 	if err == io.EOF {
-	// 		return nil
-	// 	} else if err != nil {
-	// 		return err
-	// 	}
-
-	// 	// Decode
-	// 	msg := uint8(msgType[0])
-
-	// 	if err := handler(&header, msg, dec); err != nil {
-	// 		return err
-	// 	}
-	// }
 }
 
 func NewFormatter(format string) (ConsulFormatter, error) {
@@ -527,19 +476,20 @@ func ByteSize(bytes uint64) string {
 	return result + unit
 }
 
+// Note: V1 will not calculate these stats
 // generateStats formats the stats for the output struct
 // that's used to produce the printed output the user sees.
-func generateStats(info SnapshotInfo) []typeStats {
-	ss := make([]typeStats, 0, len(info.Stats))
+// func generateStats(info SnapshotInfo) []typeStats {
+// 	ss := make([]typeStats, 0, len(info.Stats))
 
-	for _, s := range info.Stats {
-		ss = append(ss, s)
-	}
+// 	for _, s := range info.Stats {
+// 		ss = append(ss, s)
+// 	}
 
-	ss = sortTypeStats(ss)
+// 	ss = sortTypeStats(ss)
 
-	return ss
-}
+// 	return ss
+// }
 
 // sortTypeStats sorts the stat slice by size and then
 // alphabetically in the case the size is identical
