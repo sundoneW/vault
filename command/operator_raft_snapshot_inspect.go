@@ -150,8 +150,10 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 	// 	break
 	// }
 
-	v := val.Value
-	split := strings.Split(string(v), "/")
+	// v := val.Value
+	fmt.Printf("v.Key %+v\n", val.Key)
+	// fmt.Printf("v.Value %+v\n", string(v))
+	split := strings.Split(string(val.Key), "/")
 	// fmt.Println("split", split)
 
 	// handle the situation where the key is shorter than
@@ -462,9 +464,9 @@ func (_ *prettyFormatter) Format(info *OutputFormat) (string, error) {
 		fmt.Fprintln(tw, "\n Key Name\tCount\tSize")
 		fmt.Fprintf(tw, " %s\t%s\t%s", "----", "----", "----")
 		// For each different type generate new output
-		fmt.Printf(">>> STATSKV Sample %+v\n", info.StatsKV[0])
-		fmt.Println("---------------")
-		fmt.Printf(">>> STATSKV %+v\n", info.StatsKV)
+		// fmt.Printf(">>> STATSKV Sample %+v\n", info.StatsKV[0])
+		// fmt.Println("---------------")
+		// fmt.Printf(">>> STATSKV %+v\n", info.StatsKV)
 		for _, s := range info.StatsKV {
 			fmt.Fprintf(tw, "\n %s\t%d\t%s", s.Name, s.Count, ByteSize(uint64(s.Sum)))
 		}
