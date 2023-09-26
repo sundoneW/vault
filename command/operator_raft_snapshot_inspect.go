@@ -227,6 +227,7 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 	fmt.Println("====================== kvEnhance ======================")
 	key := val.Key
 	fmt.Printf(">>> Key %+v\n", key)
+	fmt.Printf(">>> Value %+v\n", string(val.Value))
 	split := strings.Split(string(val.Key), "/")
 	fmt.Println("===================ke=========================")
 
@@ -301,11 +302,8 @@ func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*i
 
 	txn := iradix.New().Txn()
 
-	x := 0
 	go func() {
 		for {
-			fmt.Println("Counter: ", x)
-			x++
 			s := new(pb.StorageEntry)
 
 			err := protoReader.ReadMsg(s)
@@ -314,7 +312,9 @@ func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*i
 			handler(s)
 
 			if err != nil {
+				fmt.Println("err", err)
 				if err == io.EOF {
+
 					errCh <- nil
 					return
 				}
