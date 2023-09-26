@@ -282,13 +282,13 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 		// 	s.Name = name
 		// }
 
-		// size := cr.read - info.TotalSize
+		size := cr.read - info.TotalSize
 		// s.Sum += size
 		// s.Count++
 		info.TotalSize = cr.read
 		// info.Stats[msg] = s
 
-		c.kvEnhance(s, cr.read, &info)
+		c.kvEnhance(s, size, &info)
 
 		return nil
 	}
