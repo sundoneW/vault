@@ -3,11 +3,11 @@
 
 package consts
 
+import "fmt"
+
 // NOTE: this file has been copied to
 // https://github.com/hashicorp/vault/blob/main/api/plugin_runtime_types.go
 // Any changes made should be made to both files at the same time.
-
-import "fmt"
 
 var PluginRuntimeTypes = []PluginRuntimeType{
 	PluginRuntimeTypeUnsupported,

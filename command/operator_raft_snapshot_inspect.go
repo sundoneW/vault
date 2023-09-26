@@ -75,13 +75,10 @@ type countingReader struct {
 
 func (r *countingReader) Read(p []byte) (n int, err error) {
 	fmt.Println("======== CountingReader ==========")
-	fmt.Println("reading into buffer p", len(p))
 	n, err = r.wrappedReader.Read(p)
-	fmt.Println("bytes read according to reader", n)
 	if err == nil {
 		r.read += n
 	}
-	fmt.Println("======== CountingReader ==========")
 	return n, err
 }
 
@@ -214,9 +211,9 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, size int, info *SnapshotInfo) {
 	// TODO: add this as option
 	// if c.kvDetails {
-	// if keyType != "KVS" {
-	// 	return
-	// }
+	if val.Key == "" {
+		return
+	}
 
 	// have to coerce this into a usable type here or this won't work
 	// keyVal := val.(map[string]interface{})
@@ -231,12 +228,7 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 	key := val.Key
 	fmt.Printf(">>> Key %+v\n", key)
 	split := strings.Split(string(val.Key), "/")
-	fmt.Printf("Split Key %+v\n", split)
-
-	// This is a test delete
-	value := val.Value
-	fmt.Println("length of value bytes", len(value))
-	fmt.Println("size from cr", size)
+	fmt.Println("===================ke=========================")
 
 	// handle the situation where the key is shorter than
 	// the specified depth.
@@ -253,15 +245,10 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 		kvs.Name = prefix
 	}
 
-	fmt.Println("Prefix", prefix)
-
 	kvs.Sum += size
 	kvs.Count++
 	info.TotalSizeKV += size
 	info.StatsKV[prefix] = kvs
-
-	fmt.Printf("Current state of info.StatsKV %+v\n", info.StatsKV)
-	fmt.Println("====================== kvEnhance ======================")
 }
 
 func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotInfo, error) {
@@ -281,10 +268,12 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 		// if s.Name == "" {
 		// 	s.Name = name
 		// }
-
+		fmt.Println("============== Handler ===============")
+		fmt.Println("Key: ", s.Key)
 		size := cr.read - info.TotalSize
 		// s.Sum += size
 		// s.Count++
+		fmt.Println("============== h ===============")
 		info.TotalSize = cr.read
 		// info.Stats[msg] = s
 
@@ -297,7 +286,7 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 	if err != nil {
 		return info, err
 	}
-	// fmt.Println(">>>>>>>> Irixdata", tree.Root())
+
 	return info, nil
 }
 
@@ -305,14 +294,20 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 // process each message type individually
 func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*iradix.Tree, error) {
 	protoReader := protoio.NewDelimitedReader(r, math.MaxInt32)
+
 	defer protoReader.Close()
 
 	errCh := make(chan error, 1)
 
 	txn := iradix.New().Txn()
+
+	x := 0
 	go func() {
 		for {
+			fmt.Println("Counter: ", x)
+			x++
 			s := new(pb.StorageEntry)
+
 			err := protoReader.ReadMsg(s)
 
 			// TODO: call handler here to calculate info stats
@@ -413,9 +408,6 @@ func (_ *prettyFormatter) Format(info *OutputFormat) (string, error) {
 		fmt.Fprintln(tw, "\n Key Name\tCount\tSize")
 		fmt.Fprintf(tw, " %s\t%s\t%s", "----", "----", "----")
 		// For each different type generate new output
-		// fmt.Printf(">>> STATSKV Sample %+v\n", info.StatsKV[0])
-		// fmt.Println("---------------")
-		// fmt.Printf(">>> STATSKV %+v\n", info.StatsKV)
 		for _, s := range info.StatsKV {
 			fmt.Fprintf(tw, "\n %s\t%d\t%s", s.Name, s.Count, ByteSize(uint64(s.Sum)))
 		}
