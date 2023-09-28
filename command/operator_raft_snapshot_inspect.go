@@ -79,6 +79,7 @@ func (r *countingReader) Read(p []byte) (n int, err error) {
 	if err == nil {
 		r.read += n
 	}
+	fmt.Println("ERROR", err)
 	return n, err
 }
 
@@ -293,7 +294,7 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 
 // ReadSnapshot decodes each message type and utilizes the handler function to
 // process each message type individually
-func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*iradix.Tree, error) {
+func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.Tree, error) {
 	protoReader := protoio.NewDelimitedReader(r, math.MaxInt32)
 
 	defer protoReader.Close()
@@ -302,8 +303,12 @@ func ReadSnapshot(r *countingReader, handler func(s *pb.StorageEntry) error) (*i
 
 	txn := iradix.New().Txn()
 
+	x := 0
 	go func() {
 		for {
+			fmt.Println("x: ", x)
+			x++
+
 			s := new(pb.StorageEntry)
 
 			err := protoReader.ReadMsg(s)
