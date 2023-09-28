@@ -39,6 +39,7 @@ var (
 
 type OperatorRaftSnapshotInspectCommand struct {
 	*BaseCommand
+	kvDetails bool
 }
 
 type MetadataInfo struct {
@@ -105,6 +106,15 @@ func (c *OperatorRaftSnapshotInspectCommand) Help() string {
 // TODO: add following flags: kvdetails, kvdepth, kvfilter, format
 func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
+
+	f := set.NewFlagSet("Command Options")
+
+	f.BoolVar(&BoolVar{
+		Name:    "kvdetails",
+		Target:  &c.kvDetails,
+		Default: false,
+		Usage:   "Provides information about usage for KV data stored in Vault.",
+	})
 
 	return set
 }
@@ -211,41 +221,44 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 }
 
 func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, info *SnapshotInfo) {
-	// TODO: add this as option
-	// if c.kvDetails {
-	if val.Key == "" {
-		return
+	if c.kvDetails {
+
+		// TODO: add this as option
+		// if c.kvDetails {
+		if val.Key == "" {
+			return
+		}
+
+		// have to coerce this into a usable type here or this won't work
+		// keyVal := val.(map[string]interface{})
+
+		// check for whether a filter is specified. if it is, skip
+		// any keys that don't match.
+		// if len(c.kvFilter) > 0 && !strings.HasPrefix(v.(string), c.kvFilter) {
+		// 	break
+		// }
+
+		split := strings.Split(string(val.Key), "/")
+
+		// handle the situation where the key is shorter than
+		// the specified depth.
+		// TEMP: hard coding this
+		ckvDepth := 2
+		actualDepth := ckvDepth
+		if ckvDepth > len(split) {
+			actualDepth = len(split)
+		}
+
+		prefix := strings.Join(split[0:actualDepth], "/")
+		kvs := info.StatsKV[prefix]
+		if kvs.Name == "" {
+			kvs.Name = prefix
+		}
+
+		kvs.Count++
+		info.TotalCountKV++
+		info.StatsKV[prefix] = kvs
 	}
-
-	// have to coerce this into a usable type here or this won't work
-	// keyVal := val.(map[string]interface{})
-
-	// check for whether a filter is specified. if it is, skip
-	// any keys that don't match.
-	// if len(c.kvFilter) > 0 && !strings.HasPrefix(v.(string), c.kvFilter) {
-	// 	break
-	// }
-
-	split := strings.Split(string(val.Key), "/")
-
-	// handle the situation where the key is shorter than
-	// the specified depth.
-	// TEMP: hard coding this
-	ckvDepth := 2
-	actualDepth := ckvDepth
-	if ckvDepth > len(split) {
-		actualDepth = len(split)
-	}
-
-	prefix := strings.Join(split[0:actualDepth], "/")
-	kvs := info.StatsKV[prefix]
-	if kvs.Name == "" {
-		kvs.Name = prefix
-	}
-
-	kvs.Count++
-	info.TotalCountKV++
-	info.StatsKV[prefix] = kvs
 }
 
 func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotInfo, error) {
