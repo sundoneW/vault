@@ -70,20 +70,21 @@ type SnapshotInfo struct {
 	// TotalSizeKV int
 }
 
+// Temporarily removing this struct as we're not calculating size in v1
 // countingReader helps keep track of the bytes we have read
 // when reading snapshots
-type countingReader struct {
-	wrappedReader io.Reader
-	read          int
-}
+// type countingReader struct {
+// 	wrappedReader io.Reader
+// 	read          int
+// }
 
-func (r *countingReader) Read(p []byte) (n int, err error) {
-	n, err = r.wrappedReader.Read(p)
-	if err == nil {
-		r.read += n
-	}
-	return n, err
-}
+// func (r *countingReader) Read(p []byte) (n int, err error) {
+// 	n, err = r.wrappedReader.Read(p)
+// 	if err == nil {
+// 		r.read += n
+// 	}
+// 	return n, err
+// }
 
 func (c *OperatorRaftSnapshotInspectCommand) Synopsis() string {
 	return "Inspects raft snapshot"
@@ -270,8 +271,6 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 		TotalCountKV: 0,
 	}
 
-	cr := &countingReader{wrappedReader: file}
-
 	handler := func(s *pb.StorageEntry) error {
 		// name := string(msg)
 		// s := info.Stats[msg]
@@ -289,7 +288,7 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 		return nil
 	}
 
-	_, err := ReadSnapshot(cr, handler)
+	_, err := ReadSnapshot(file, handler)
 	if err != nil {
 		return info, err
 	}
@@ -301,8 +300,6 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 // process each message type individually
 func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.Tree, error) {
 	protoReader := protoio.NewDelimitedReader(r, math.MaxInt32)
-
-	defer protoReader.Close()
 
 	errCh := make(chan error, 1)
 
