@@ -32,7 +32,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -93,31 +92,22 @@ type varintReader struct {
 }
 
 func (this *varintReader) ReadMsg(msg proto.Message) error {
-	fmt.Println("====== protoio ReadMsg ======")
 	length64, err := binary.ReadUvarint(this.r)
 	if err != nil {
-		fmt.Println("err 1", err)
 		return err
 	}
 	length := int(length64)
-	fmt.Println("Length to be read of protobuffer", length)
 	if length < 0 || length > this.maxSize {
-		fmt.Println("error short buffer")
 		return io.ErrShortBuffer
 	}
 	if len(this.buf) < length {
-		fmt.Println("Increasing size of buffer")
 		this.buf = make([]byte, length)
 	}
 	buf := this.buf[:length]
-	fmt.Println("length of buffer should not be 0", len(buf))
-	fmt.Println("io.ReadFull should call cr.Read")
 	if _, err := io.ReadFull(this.r, buf); err != nil {
-		fmt.Println("error in read full", err)
 		return err
 	}
 	e := proto.Unmarshal(buf, msg)
-	fmt.Println("===readmsg===")
 	return e
 }
 

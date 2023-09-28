@@ -50,8 +50,9 @@ type MetadataInfo struct {
 }
 
 type typeStats struct {
-	Name  string
-	Sum   int
+	Name string
+	// skipping sum for v1
+	// Sum   int
 	Count int
 }
 
@@ -61,9 +62,11 @@ type SnapshotInfo struct {
 	Meta MetadataInfo
 	// Note: we are not calculating these stats in v1
 	// Stats       map[uint8]typeStats
-	StatsKV     map[string]typeStats
-	TotalSize   int
-	TotalSizeKV int
+	StatsKV      map[string]typeStats
+	TotalSize    int
+	TotalCountKV int
+	// not supported in v1
+	// TotalSizeKV int
 }
 
 // countingReader helps keep track of the bytes we have read
@@ -74,12 +77,10 @@ type countingReader struct {
 }
 
 func (r *countingReader) Read(p []byte) (n int, err error) {
-	fmt.Println("======== CountingReader ==========")
 	n, err = r.wrappedReader.Read(p)
 	if err == nil {
 		r.read += n
 	}
-	fmt.Println("ERROR", err)
 	return n, err
 }
 
@@ -194,9 +195,9 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		Meta: metaformat,
 		// Note: v1 does not calculate stats
 		// Stats:       formattedStats,
-		StatsKV:     formattedStatsKV,
-		TotalSize:   info.TotalSize,
-		TotalSizeKV: info.TotalSizeKV,
+		StatsKV:      formattedStatsKV,
+		TotalSize:    info.TotalSize,
+		TotalCountKV: info.TotalCountKV,
 	}
 
 	out, err := formatter.Format(in)
@@ -209,7 +210,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, size int, info *SnapshotInfo) {
+func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, info *SnapshotInfo) {
 	// TODO: add this as option
 	// if c.kvDetails {
 	if val.Key == "" {
@@ -225,12 +226,7 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 	// 	break
 	// }
 
-	fmt.Println("====================== kvEnhance ======================")
-	key := val.Key
-	fmt.Printf(">>> Key %+v\n", key)
-	fmt.Printf(">>> Value %+v\n", string(val.Value))
 	split := strings.Split(string(val.Key), "/")
-	fmt.Println("===================ke=========================")
 
 	// handle the situation where the key is shorter than
 	// the specified depth.
@@ -247,9 +243,8 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, siz
 		kvs.Name = prefix
 	}
 
-	kvs.Sum += size
 	kvs.Count++
-	info.TotalSizeKV += size
+	info.TotalCountKV++
 	info.StatsKV[prefix] = kvs
 }
 
@@ -257,9 +252,9 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 	info := SnapshotInfo{
 		// we are not calculating these stats in v1
 		// Stats:       make(map[uint8]typeStats),
-		StatsKV:     make(map[string]typeStats),
-		TotalSize:   0,
-		TotalSizeKV: 0,
+		StatsKV:      make(map[string]typeStats),
+		TotalSize:    0,
+		TotalCountKV: 0,
 	}
 
 	cr := &countingReader{wrappedReader: file}
@@ -270,16 +265,13 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 		// if s.Name == "" {
 		// 	s.Name = name
 		// }
-		fmt.Println("============== Handler ===============")
-		fmt.Println("Key: ", s.Key)
-		size := cr.read - info.TotalSize
+		// size := cr.read - info.TotalSize
 		// s.Sum += size
 		// s.Count++
-		fmt.Println("============== h ===============")
-		info.TotalSize = cr.read
+		// info.TotalSize = cr.read
 		// info.Stats[msg] = s
 
-		c.kvEnhance(s, size, &info)
+		c.kvEnhance(s, &info)
 
 		return nil
 	}
@@ -303,12 +295,8 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 
 	txn := iradix.New().Txn()
 
-	x := 0
 	go func() {
 		for {
-			fmt.Println("x: ", x)
-			x++
-
 			s := new(pb.StorageEntry)
 
 			err := protoReader.ReadMsg(s)
@@ -317,7 +305,6 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 			handler(s)
 
 			if err != nil {
-				fmt.Println("err", err)
 				if err == io.EOF {
 
 					errCh <- nil
@@ -406,18 +393,18 @@ func (_ *prettyFormatter) Format(info *OutputFormat) (string, error) {
 	// 	fmt.Fprintf(tw, "\n %s\t%d\t%s", s.Name, s.Count, ByteSize(uint64(s.Sum)))
 	// }
 	// fmt.Fprintf(tw, "\n %s\t%s\t%s", "----", "----", "----")
-	fmt.Fprintf(tw, "\n Total\t\t%s", ByteSize(uint64(info.TotalSize)))
+	// fmt.Fprintf(tw, "\n Total\t\t%s", ByteSize(uint64(info.TotalSize)))
 
 	if info.StatsKV != nil {
 		fmt.Fprintf(tw, "\n")
-		fmt.Fprintln(tw, "\n Key Name\tCount\tSize")
-		fmt.Fprintf(tw, " %s\t%s\t%s", "----", "----", "----")
+		fmt.Fprintln(tw, "\n Key Name\tCount")
+		fmt.Fprintf(tw, " %s\t%s", "----", "----")
 		// For each different type generate new output
 		for _, s := range info.StatsKV {
-			fmt.Fprintf(tw, "\n %s\t%d\t%s", s.Name, s.Count, ByteSize(uint64(s.Sum)))
+			fmt.Fprintf(tw, "\n %s\t%d", s.Name, s.Count)
 		}
-		fmt.Fprintf(tw, "\n %s\t%s\t%s", "----", "----", "----")
-		fmt.Fprintf(tw, "\n Total\t\t%s", ByteSize(uint64(info.TotalSizeKV)))
+		fmt.Fprintf(tw, "\n %s\t%s", "----", "----")
+		fmt.Fprintf(tw, "\n Total\t%d", info.TotalCountKV)
 	}
 
 	if err := tw.Flush(); err != nil {
@@ -430,11 +417,13 @@ func (_ *prettyFormatter) Format(info *OutputFormat) (string, error) {
 // OutputFormat is used for passing information
 // through the formatter
 type OutputFormat struct {
-	Meta        *MetadataInfo
-	Stats       []typeStats
-	StatsKV     []typeStats
-	TotalSize   int
-	TotalSizeKV int
+	Meta      *MetadataInfo
+	Stats     []typeStats
+	StatsKV   []typeStats
+	TotalSize int
+	// not supported in v1
+	// TotalSizeKV  int
+	TotalCountKV int
 }
 
 const (
@@ -491,13 +480,13 @@ func ByteSize(bytes uint64) string {
 // sortTypeStats sorts the stat slice by size and then
 // alphabetically in the case the size is identical
 func sortTypeStats(stats []typeStats) []typeStats {
+	// sort alphabetically if size is equal
 	sort.Slice(stats, func(i, j int) bool {
-		// sort alphabetically if size is equal
-		if stats[i].Sum == stats[j].Sum {
+		// Sort alphabetically if count is equal
+		if stats[i].Count == stats[j].Count {
 			return stats[i].Name < stats[j].Name
 		}
-
-		return stats[i].Sum > stats[j].Sum
+		return stats[i].Count > stats[j].Count
 	})
 
 	return stats
