@@ -43,9 +43,9 @@ func TestOperatorRaftSnapshotInspectCommand_Run(t *testing.T) {
 			0,
 		},
 		{
-			"kvdetails_flag",
-			[]string{"-kvdetails", "./test-fixtures/test.snap"},
-			"Key Name                                          Count",
+			"all_flags",
+			[]string{"-kvdetails", "-kvdepth", "10", "-kvfilter", "core", "./test-fixtures/test.snap"},
+			"Key Name                                              Count",
 			0,
 		},
 	}

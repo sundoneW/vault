@@ -42,52 +42,7 @@ type OperatorRaftSnapshotInspectCommand struct {
 	kvDetails bool
 	kvDepth   int
 	kvFilter  string
-	// format    string
 }
-
-type MetadataInfo struct {
-	ID      string
-	Size    int64
-	Index   uint64
-	Term    uint64
-	Version raft.SnapshotVersion
-}
-
-type typeStats struct {
-	Name string
-	// skipping sum for v1
-	// Sum   int
-	Count int
-}
-
-// // SnapshotInfo is used for passing snapshot stat
-// // information between functions
-type SnapshotInfo struct {
-	Meta MetadataInfo
-	// Note: we are not calculating these stats in v1
-	// Stats       map[uint8]typeStats
-	StatsKV      map[string]typeStats
-	TotalSize    int
-	TotalCountKV int
-	// not supported in v1
-	// TotalSizeKV int
-}
-
-// Temporarily removing this struct as we're not calculating size in v1
-// countingReader helps keep track of the bytes we have read
-// when reading snapshots
-// type countingReader struct {
-// 	wrappedReader io.Reader
-// 	read          int
-// }
-
-// func (r *countingReader) Read(p []byte) (n int, err error) {
-// 	n, err = r.wrappedReader.Read(p)
-// 	if err == nil {
-// 		r.read += n
-// 	}
-// 	return n, err
-// }
 
 func (c *OperatorRaftSnapshotInspectCommand) Synopsis() string {
 	return "Inspects raft snapshot"
@@ -107,7 +62,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Help() string {
 	return strings.TrimSpace(helpText)
 }
 
-// TODO: add following flags: kvdetails, kvdepth, kvfilter, format
 func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
 
@@ -134,13 +88,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 		Usage:   "Can only be used with -kvdetails. Limits KV key breakdown using this prefix filter.",
 	})
 
-	// f.StringVar(&StringVar{
-	// 	Name:    "format",
-	// 	Target:  &c.format,
-	// 	Default: PrettyFormat,
-	// 	Usage:   fmt.Sprintf("Output format"),
-	// })
-
 	return set
 }
 
@@ -152,8 +99,29 @@ func (c *OperatorRaftSnapshotInspectCommand) AutocompleteFlags() complete.Flags 
 	return c.Flags().Completions()
 }
 
+// SnapshotInfo is used for passing snapshot stat
+// information between functions
+type SnapshotInfo struct {
+	Meta         MetadataInfo
+	StatsKV      map[string]typeStats
+	TotalSize    int
+	TotalCountKV int
+}
+
+type MetadataInfo struct {
+	ID      string
+	Size    int64
+	Index   uint64
+	Term    uint64
+	Version raft.SnapshotVersion
+}
+
+type typeStats struct {
+	Name  string
+	Count int
+}
+
 func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
-	// TODO: how to add other flags like kvdetails, kvfilter and kvdepth
 	flags := c.Flags()
 
 	if err := flags.Parse(args); err != nil {
@@ -175,7 +143,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		return 1
 	}
 
-	// TODO: skipping state.bin logic for now
 	// Open the file.
 	f, err := os.Open(file)
 	if err != nil {
@@ -186,7 +153,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 
 	var readFile *os.File
 	var meta *raft.SnapshotMeta
-
 	readFile, meta, err = Read(hclog.New(nil), f)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error reading snapshot: %s", err))
@@ -212,6 +178,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error outputting enhanced snapshot data: %s", err))
 		return 1
 	}
+
 	// Generate structs for the formatter with information we read in
 	metaformat := &MetadataInfo{
 		ID:      meta.ID,
@@ -222,14 +189,10 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	}
 
 	// Restructures stats given above to be human readable
-	// Note: v1 does not calculate these stats
-	// formattedStats := generateStats(info)
 	formattedStatsKV := generateKVStats(info)
 
 	in := &OutputFormat{
-		Meta: metaformat,
-		// Note: v1 does not calculate stats
-		// Stats:       formattedStats,
+		Meta:         metaformat,
 		StatsKV:      formattedStatsKV,
 		TotalSize:    info.TotalSize,
 		TotalCountKV: info.TotalCountKV,
@@ -541,7 +504,8 @@ func generateKVStats(info SnapshotInfo) []typeStats {
 	return nil
 }
 
-// Read a snapshot into a temporary file. The caller is responsible for removing the file.
+// Read a snapshot into a temporary file. Return file and metadata from snapshot.
+// The caller is responsible for removing the file.
 func Read(logger hclog.Logger, in io.Reader) (*os.File, *raft.SnapshotMeta, error) {
 	// Wrap the reader in a gzip decompressor.
 	decomp, err := gzip.NewReader(in)
