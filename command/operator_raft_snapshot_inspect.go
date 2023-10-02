@@ -42,6 +42,7 @@ type OperatorRaftSnapshotInspectCommand struct {
 	kvDetails bool
 	kvDepth   int
 	kvFilter  string
+	// format    string
 }
 
 type MetadataInfo struct {
@@ -133,6 +134,13 @@ func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 		Usage:   "Can only be used with -kvdetails. Limits KV key breakdown using this prefix filter.",
 	})
 
+	// f.StringVar(&StringVar{
+	// 	Name:    "format",
+	// 	Target:  &c.format,
+	// 	Default: PrettyFormat,
+	// 	Usage:   fmt.Sprintf("Output format"),
+	// })
+
 	return set
 }
 
@@ -199,7 +207,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		return 1
 	}
 
-	formatter, err := NewFormatter("pretty")
+	formatter, err := NewFormatter(c.flagFormat)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error outputting enhanced snapshot data: %s", err))
 		return 1
@@ -248,10 +256,7 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, inf
 
 		// check for whether a filter is specified. if it is, skip
 		// any keys that don't match.
-		fmt.Println("Key", val.Key)
-		fmt.Println("Filter", c.kvFilter)
 		if len(c.kvFilter) > 0 && !strings.HasPrefix(val.Key, c.kvFilter) {
-			fmt.Println("filtering out")
 			return
 		}
 
@@ -362,7 +367,7 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 
 func NewFormatter(format string) (ConsulFormatter, error) {
 	switch format {
-	case PrettyFormat:
+	case TableFormat:
 		return newPrettyFormatter(), nil
 	case JSONFormat:
 		return newJSONFormatter(), nil
@@ -372,8 +377,8 @@ func NewFormatter(format string) (ConsulFormatter, error) {
 }
 
 const (
-	PrettyFormat string = "pretty"
-	JSONFormat   string = "json"
+	TableFormat string = "table"
+	JSONFormat  string = "json"
 )
 
 type ConsulFormatter interface {
