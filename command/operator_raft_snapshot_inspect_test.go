@@ -43,7 +43,7 @@ func TestOperatorRaftSnapshotInspectCommand_Run(t *testing.T) {
 			0,
 		},
 		{
-			"kvdetails flag",
+			"kvdetails_flag",
 			[]string{"-kvdetails", "./test-fixtures/test.snap"},
 			"Key Name                                          Count",
 			0,

@@ -40,6 +40,7 @@ var (
 type OperatorRaftSnapshotInspectCommand struct {
 	*BaseCommand
 	kvDetails bool
+	kvDepth   int
 }
 
 type MetadataInfo struct {
@@ -115,6 +116,13 @@ func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 		Target:  &c.kvDetails,
 		Default: false,
 		Usage:   "Provides information about usage for KV data stored in Vault.",
+	})
+
+	f.IntVar(&IntVar{
+		Name:    "kvdepth",
+		Target:  &c.kvDepth,
+		Default: 2,
+		Usage:   "Can only be used with -kvdetails. The key prefix depth used to breakdown KV store data. Defaults to 2.",
 	})
 
 	return set
@@ -243,10 +251,8 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, inf
 
 		// handle the situation where the key is shorter than
 		// the specified depth.
-		// TEMP: hard coding this
-		ckvDepth := 2
-		actualDepth := ckvDepth
-		if ckvDepth > len(split) {
+		actualDepth := c.kvDepth
+		if c.kvDepth > len(split) {
 			actualDepth = len(split)
 		}
 
