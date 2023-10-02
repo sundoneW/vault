@@ -41,6 +41,7 @@ type OperatorRaftSnapshotInspectCommand struct {
 	*BaseCommand
 	kvDetails bool
 	kvDepth   int
+	kvFilter  string
 }
 
 type MetadataInfo struct {
@@ -123,6 +124,13 @@ func (c *OperatorRaftSnapshotInspectCommand) Flags() *FlagSets {
 		Target:  &c.kvDepth,
 		Default: 2,
 		Usage:   "Can only be used with -kvdetails. The key prefix depth used to breakdown KV store data. Defaults to 2.",
+	})
+
+	f.StringVar(&StringVar{
+		Name:    "kvfilter",
+		Target:  &c.kvFilter,
+		Default: "",
+		Usage:   "Can only be used with -kvdetails. Limits KV key breakdown using this prefix filter.",
 	})
 
 	return set
@@ -238,14 +246,14 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, inf
 			return
 		}
 
-		// have to coerce this into a usable type here or this won't work
-		// keyVal := val.(map[string]interface{})
-
 		// check for whether a filter is specified. if it is, skip
 		// any keys that don't match.
-		// if len(c.kvFilter) > 0 && !strings.HasPrefix(v.(string), c.kvFilter) {
-		// 	break
-		// }
+		fmt.Println("Key", val.Key)
+		fmt.Println("Filter", c.kvFilter)
+		if len(c.kvFilter) > 0 && !strings.HasPrefix(val.Key, c.kvFilter) {
+			fmt.Println("filtering out")
+			return
+		}
 
 		split := strings.Split(string(val.Key), "/")
 
