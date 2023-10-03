@@ -196,7 +196,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	in := &OutputFormat{
 		Meta:         metaformat,
 		StatsKV:      formattedStatsKV,
-		TotalSize:    info.TotalSize,
 		TotalCountKV: info.TotalCountKV,
 	}
 
@@ -212,9 +211,6 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 
 func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, info *SnapshotInfo) {
 	if c.kvDetails {
-
-		// TODO: add this as option
-		// if c.kvDetails {
 		if val.Key == "" {
 			return
 		}
@@ -281,9 +277,6 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 			s := new(pb.StorageEntry)
 
 			err := protoReader.ReadMsg(s)
-
-			handler(s)
-
 			if err != nil {
 				if err == io.EOF {
 
@@ -294,12 +287,10 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 				return
 			}
 
+			handler(s)
+
 			var value interface{} = struct{}{}
 
-			// TODO: assuming we want to load values from right now
-			// if loadValues {
-			// 	value = s.Value
-			// }
 			value = s.Value
 
 			txn.Insert([]byte(s.Key), value)
@@ -314,182 +305,6 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 	data := txn.Commit()
 
 	return data, nil
-}
-
-func NewFormatter(format string) (ConsulFormatter, error) {
-	switch format {
-	case TableFormat:
-		return newPrettyFormatter(), nil
-	case JSONFormat:
-		return newJSONFormatter(), nil
-	default:
-		return nil, fmt.Errorf("Unknown format: %s", format)
-	}
-}
-
-const (
-	TableFormat string = "table"
-	JSONFormat  string = "json"
-)
-
-type ConsulFormatter interface {
-	Format(*OutputFormat) (string, error)
-}
-
-func newPrettyFormatter() ConsulFormatter {
-	return &prettyFormatter{}
-}
-
-type prettyFormatter struct{}
-
-type jsonFormatter struct{}
-
-func newJSONFormatter() ConsulFormatter {
-	return &jsonFormatter{}
-}
-
-func (_ *jsonFormatter) Format(info *OutputFormat) (string, error) {
-	b, err := json.MarshalIndent(info, "", "   ")
-	if err != nil {
-		return "", fmt.Errorf("Failed to marshal original snapshot stats: %v", err)
-	}
-	return string(b), nil
-}
-
-func (_ *prettyFormatter) Format(info *OutputFormat) (string, error) {
-	var b bytes.Buffer
-	tw := tabwriter.NewWriter(&b, 8, 8, 6, ' ', 0)
-
-	fmt.Fprintf(tw, " ID\t%s", info.Meta.ID)
-	fmt.Fprintf(tw, "\n Size\t%d", info.Meta.Size)
-	fmt.Fprintf(tw, "\n Index\t%d", info.Meta.Index)
-	fmt.Fprintf(tw, "\n Term\t%d", info.Meta.Term)
-	fmt.Fprintf(tw, "\n Version\t%d", info.Meta.Version)
-	fmt.Fprintf(tw, "\n")
-	// fmt.Fprintln(tw, "\n Type\tCount\tSize")
-	// fmt.Fprintf(tw, " %s\t%s\t%s", "----", "----", "----")
-	// // For each different type generate new output
-	// for _, s := range info.Stats {
-	// 	fmt.Fprintf(tw, "\n %s\t%d\t%s", s.Name, s.Count, ByteSize(uint64(s.Sum)))
-	// }
-	// fmt.Fprintf(tw, "\n %s\t%s\t%s", "----", "----", "----")
-	// fmt.Fprintf(tw, "\n Total\t\t%s", ByteSize(uint64(info.TotalSize)))
-
-	if info.StatsKV != nil {
-		fmt.Fprintf(tw, "\n")
-		fmt.Fprintln(tw, "\n Key Name\tCount")
-		fmt.Fprintf(tw, " %s\t%s", "----", "----")
-		// For each different type generate new output
-		for _, s := range info.StatsKV {
-			fmt.Fprintf(tw, "\n %s\t%d", s.Name, s.Count)
-		}
-		fmt.Fprintf(tw, "\n %s\t%s", "----", "----")
-		fmt.Fprintf(tw, "\n Total\t%d", info.TotalCountKV)
-	}
-
-	if err := tw.Flush(); err != nil {
-		return b.String(), err
-	}
-
-	return b.String(), nil
-}
-
-// OutputFormat is used for passing information
-// through the formatter
-type OutputFormat struct {
-	Meta      *MetadataInfo
-	Stats     []typeStats
-	StatsKV   []typeStats
-	TotalSize int
-	// not supported in v1
-	// TotalSizeKV  int
-	TotalCountKV int
-}
-
-const (
-	BYTE = 1 << (10 * iota)
-	KILOBYTE
-	MEGABYTE
-	GIGABYTE
-	TERABYTE
-)
-
-func ByteSize(bytes uint64) string {
-	unit := ""
-	value := float64(bytes)
-
-	switch {
-	case bytes >= TERABYTE:
-		unit = "TB"
-		value = value / TERABYTE
-	case bytes >= GIGABYTE:
-		unit = "GB"
-		value = value / GIGABYTE
-	case bytes >= MEGABYTE:
-		unit = "MB"
-		value = value / MEGABYTE
-	case bytes >= KILOBYTE:
-		unit = "KB"
-		value = value / KILOBYTE
-	case bytes >= BYTE:
-		unit = "B"
-	case bytes == 0:
-		return "0"
-	}
-
-	result := strconv.FormatFloat(value, 'f', 1, 64)
-	result = strings.TrimSuffix(result, ".0")
-	return result + unit
-}
-
-// Note: V1 will not calculate these stats
-// generateStats formats the stats for the output struct
-// that's used to produce the printed output the user sees.
-// func generateStats(info SnapshotInfo) []typeStats {
-// 	ss := make([]typeStats, 0, len(info.Stats))
-
-// 	for _, s := range info.Stats {
-// 		ss = append(ss, s)
-// 	}
-
-// 	ss = sortTypeStats(ss)
-
-// 	return ss
-// }
-
-// sortTypeStats sorts the stat slice by size and then
-// alphabetically in the case the size is identical
-func sortTypeStats(stats []typeStats) []typeStats {
-	// sort alphabetically if size is equal
-	sort.Slice(stats, func(i, j int) bool {
-		// Sort alphabetically if count is equal
-		if stats[i].Count == stats[j].Count {
-			return stats[i].Name < stats[j].Name
-		}
-		return stats[i].Count > stats[j].Count
-	})
-
-	return stats
-}
-
-// generateKVStats reformats the KV stats to work with
-// the output struct that's used to produce the printed
-// output the user sees.
-func generateKVStats(info SnapshotInfo) []typeStats {
-	kvLen := len(info.StatsKV)
-	if kvLen > 0 {
-		ks := make([]typeStats, 0, kvLen)
-
-		for _, s := range info.StatsKV {
-			ks = append(ks, s)
-		}
-
-		ks = sortTypeStats(ks)
-
-		return ks
-	}
-
-	return nil
 }
 
 // Read a snapshot into a temporary file. Return file and metadata from snapshot.
@@ -531,6 +346,156 @@ func Read(logger hclog.Logger, in io.Reader) (*os.File, *raft.SnapshotMeta, erro
 		return nil, nil, fmt.Errorf("failed to rewind temp snapshot: %v", err)
 	}
 	return snap, &metadata, nil
+}
+
+const (
+	TableFormat string = "table"
+	JSONFormat  string = "json"
+)
+
+func NewFormatter(format string) (SnapshotFormatter, error) {
+	switch format {
+	case TableFormat:
+		return newTableFormatter(), nil
+	case JSONFormat:
+		return newJSONFormatter(), nil
+	default:
+		return nil, fmt.Errorf("Unknown format: %s", format)
+	}
+}
+
+func newTableFormatter() SnapshotFormatter {
+	return &tableFormatter{}
+}
+
+func newJSONFormatter() SnapshotFormatter {
+	return &jsonFormatter{}
+}
+
+type SnapshotFormatter interface {
+	Format(*OutputFormat) (string, error)
+}
+
+type tableFormatter struct{}
+
+type jsonFormatter struct{}
+
+func (_ *jsonFormatter) Format(info *OutputFormat) (string, error) {
+	b, err := json.MarshalIndent(info, "", "   ")
+	if err != nil {
+		return "", fmt.Errorf("Failed to marshal original snapshot stats: %v", err)
+	}
+	return string(b), nil
+}
+
+func (_ *tableFormatter) Format(info *OutputFormat) (string, error) {
+	var b bytes.Buffer
+	tw := tabwriter.NewWriter(&b, 8, 8, 6, ' ', 0)
+
+	fmt.Fprintf(tw, " ID\t%s", info.Meta.ID)
+	fmt.Fprintf(tw, "\n Size\t%d", info.Meta.Size)
+	fmt.Fprintf(tw, "\n Index\t%d", info.Meta.Index)
+	fmt.Fprintf(tw, "\n Term\t%d", info.Meta.Term)
+	fmt.Fprintf(tw, "\n Version\t%d", info.Meta.Version)
+	fmt.Fprintf(tw, "\n")
+
+	if info.StatsKV != nil {
+		fmt.Fprintf(tw, "\n")
+		fmt.Fprintln(tw, "\n Key Name\tCount")
+		fmt.Fprintf(tw, " %s\t%s", "----", "----")
+
+		for _, s := range info.StatsKV {
+			fmt.Fprintf(tw, "\n %s\t%d", s.Name, s.Count)
+		}
+
+		fmt.Fprintf(tw, "\n %s\t%s", "----", "----")
+		fmt.Fprintf(tw, "\n Total\t%d", info.TotalCountKV)
+	}
+
+	if err := tw.Flush(); err != nil {
+		return b.String(), err
+	}
+
+	return b.String(), nil
+}
+
+// OutputFormat is used for passing information
+// through the formatter
+type OutputFormat struct {
+	Meta         *MetadataInfo
+	StatsKV      []typeStats
+	TotalCountKV int
+}
+
+const (
+	BYTE = 1 << (10 * iota)
+	KILOBYTE
+	MEGABYTE
+	GIGABYTE
+	TERABYTE
+)
+
+func ByteSize(bytes uint64) string {
+	unit := ""
+	value := float64(bytes)
+
+	switch {
+	case bytes >= TERABYTE:
+		unit = "TB"
+		value = value / TERABYTE
+	case bytes >= GIGABYTE:
+		unit = "GB"
+		value = value / GIGABYTE
+	case bytes >= MEGABYTE:
+		unit = "MB"
+		value = value / MEGABYTE
+	case bytes >= KILOBYTE:
+		unit = "KB"
+		value = value / KILOBYTE
+	case bytes >= BYTE:
+		unit = "B"
+	case bytes == 0:
+		return "0"
+	}
+
+	result := strconv.FormatFloat(value, 'f', 1, 64)
+	result = strings.TrimSuffix(result, ".0")
+	return result + unit
+}
+
+// sortTypeStats sorts the stat slice by count and then
+// alphabetically in the case the counts are equal
+func sortTypeStats(stats []typeStats) []typeStats {
+	// sort alphabetically if size is equal
+	sort.Slice(stats, func(i, j int) bool {
+		// Sort alphabetically if count is equal
+		if stats[i].Count == stats[j].Count {
+			return stats[i].Name < stats[j].Name
+		}
+		return stats[i].Count > stats[j].Count
+	})
+
+	return stats
+}
+
+// generateKVStats reformats the KV stats to work with
+// the output struct that's used to produce the printed
+// output the user sees.
+func generateKVStats(info SnapshotInfo) []typeStats {
+	kvLen := len(info.StatsKV)
+	if kvLen > 0 {
+		ks := make([]typeStats, 0, kvLen)
+
+		for _, s := range info.StatsKV {
+			ks = append(ks, s)
+		}
+
+		ks = sortTypeStats(ks)
+
+		return ks
+	}
+
+	return nil
 }
 
 // hashList manages a list of filenames and their hashes.
@@ -576,12 +541,9 @@ func (hl *hashList) DecodeAndVerify(r io.Reader) error {
 	for s.Scan() {
 		sha := make([]byte, sha256.Size)
 		var file string
-		fmt.Printf("s.Text() %+v\n", s.Text())
 		if _, err := fmt.Sscanf(s.Text(), "%x  %s", &sha, &file); err != nil {
 			return err
 		}
-		fmt.Printf("sha %+v\n", sha)
-		fmt.Printf("file %+v\n", file)
 
 		h, ok := hl.hashes[file]
 		if !ok {
@@ -620,7 +582,6 @@ func read(in io.Reader, metadata *raft.SnapshotMeta, snap io.Writer) error {
 	// Populate the hashes for all the files we expect to see. The check at
 	// the end will make sure these are all present in the SHA256SUMS file
 	// and that the hashes match.
-	// TODO: look into this verification process more carefully
 	metaHash := hl.Add("meta.json")
 	snapHash := hl.Add("state.bin")
 
@@ -692,52 +653,3 @@ func concludeGzipRead(decomp *gzip.Reader) error {
 	}
 	return nil
 }
-
-type MessageType uint8
-
-const (
-	RegisterRequestType             MessageType = 0
-	DeregisterRequestType                       = 1
-	KVSRequestType                              = 2
-	SessionRequestType                          = 3
-	DeprecatedACLRequestType                    = 4 // Removed with the legacy ACL system
-	TombstoneRequestType                        = 5
-	CoordinateBatchUpdateType                   = 6
-	PreparedQueryRequestType                    = 7
-	TxnRequestType                              = 8
-	AutopilotRequestType                        = 9
-	AreaRequestType                             = 10
-	ACLBootstrapRequestType                     = 11
-	IntentionRequestType                        = 12
-	ConnectCARequestType                        = 13
-	ConnectCAProviderStateType                  = 14
-	ConnectCAConfigType                         = 15 // FSM snapshots only.
-	IndexRequestType                            = 16 // FSM snapshots only.
-	ACLTokenSetRequestType                      = 17
-	ACLTokenDeleteRequestType                   = 18
-	ACLPolicySetRequestType                     = 19
-	ACLPolicyDeleteRequestType                  = 20
-	ConnectCALeafRequestType                    = 21
-	ConfigEntryRequestType                      = 22
-	ACLRoleSetRequestType                       = 23
-	ACLRoleDeleteRequestType                    = 24
-	ACLBindingRuleSetRequestType                = 25
-	ACLBindingRuleDeleteRequestType             = 26
-	ACLAuthMethodSetRequestType                 = 27
-	ACLAuthMethodDeleteRequestType              = 28
-	ChunkingStateType                           = 29
-	FederationStateRequestType                  = 30
-	SystemMetadataRequestType                   = 31
-	ServiceVirtualIPRequestType                 = 32
-	FreeVirtualIPRequestType                    = 33
-	KindServiceNamesType                        = 34
-	PeeringWriteType                            = 35
-	PeeringDeleteType                           = 36
-	PeeringTerminateByIDType                    = 37
-	PeeringTrustBundleWriteType                 = 38
-	PeeringTrustBundleDeleteType                = 39
-	PeeringSecretsWriteType                     = 40
-	RaftLogVerifierCheckpoint                   = 41 // Only used for log verifier, no-op on FSM.
-	ResourceOperationType                       = 42
-	UpdateVirtualIPRequestType                  = 43
-)
