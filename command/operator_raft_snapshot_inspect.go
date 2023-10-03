@@ -22,7 +22,6 @@ import (
 
 	iradix "github.com/hashicorp/go-immutable-radix"
 
-	// protoio "github.com/gogo/protobuf/io"
 	protoio "github.com/hashicorp/vault/physical/raft"
 
 	"github.com/hashicorp/go-hclog"
@@ -129,6 +128,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Fetch snapshot filename
 	var file string
 	args = c.flags.Args()
 
@@ -151,6 +151,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 	}
 	defer f.Close()
 
+	// Parse metadata and copy state.bin contents to temporary file
 	var readFile *os.File
 	var meta *raft.SnapshotMeta
 	readFile, meta, err = Read(hclog.New(nil), f)
@@ -167,6 +168,7 @@ func (c *OperatorRaftSnapshotInspectCommand) Run(args []string) int {
 		}
 	}()
 
+	// Parse contents from temporary file
 	info, err := c.enhance(readFile)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error extracting snapshot data: %s", err))
@@ -246,25 +248,12 @@ func (c *OperatorRaftSnapshotInspectCommand) kvEnhance(val *pb.StorageEntry, inf
 
 func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotInfo, error) {
 	info := SnapshotInfo{
-		// we are not calculating these stats in v1
-		// Stats:       make(map[uint8]typeStats),
 		StatsKV:      make(map[string]typeStats),
 		TotalSize:    0,
 		TotalCountKV: 0,
 	}
 
 	handler := func(s *pb.StorageEntry) error {
-		// name := string(msg)
-		// s := info.Stats[msg]
-		// if s.Name == "" {
-		// 	s.Name = name
-		// }
-		// size := cr.read - info.TotalSize
-		// s.Sum += size
-		// s.Count++
-		// info.TotalSize = cr.read
-		// info.Stats[msg] = s
-
 		c.kvEnhance(s, &info)
 
 		return nil
@@ -293,7 +282,6 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry) error) (*iradix.
 
 			err := protoReader.ReadMsg(s)
 
-			// TODO: call handler here to calculate info stats
 			handler(s)
 
 			if err != nil {
@@ -545,6 +533,79 @@ func Read(logger hclog.Logger, in io.Reader) (*os.File, *raft.SnapshotMeta, erro
 	return snap, &metadata, nil
 }
 
+// hashList manages a list of filenames and their hashes.
+type hashList struct {
+	hashes map[string]hash.Hash
+}
+
+// newHashList returns a new hashList.
+func newHashList() *hashList {
+	return &hashList{
+		hashes: make(map[string]hash.Hash),
+	}
+}
+
+// Add creates a new hash for the given file.
+func (hl *hashList) Add(file string) hash.Hash {
+	if existing, ok := hl.hashes[file]; ok {
+		return existing
+	}
+
+	h := sha256.New()
+	hl.hashes[file] = h
+	return h
+}
+
+// Encode takes the current sum of all the hashes and saves the hash list as a
+// SHA256SUMS-style text file.
+func (hl *hashList) Encode(w io.Writer) error {
+	for file, h := range hl.hashes {
+		if _, err := fmt.Fprintf(w, "%x  %s\n", h.Sum([]byte{}), file); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DecodeAndVerify reads a SHA256SUMS-style text file and checks the results
+// against the current sums for all the hashes.
+func (hl *hashList) DecodeAndVerify(r io.Reader) error {
+	// Read the file and make sure everything in there has a matching hash.
+	seen := make(map[string]struct{})
+	s := bufio.NewScanner(r)
+	for s.Scan() {
+		sha := make([]byte, sha256.Size)
+		var file string
+		fmt.Printf("s.Text() %+v\n", s.Text())
+		if _, err := fmt.Sscanf(s.Text(), "%x  %s", &sha, &file); err != nil {
+			return err
+		}
+		fmt.Printf("sha %+v\n", sha)
+		fmt.Printf("file %+v\n", file)
+
+		h, ok := hl.hashes[file]
+		if !ok {
+			return fmt.Errorf("list missing hash for %q", file)
+		}
+		if !bytes.Equal(sha, h.Sum([]byte{})) {
+			return fmt.Errorf("hash check failed for %q", file)
+		}
+		seen[file] = struct{}{}
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+
+	// Make sure everything we had a hash for was seen.
+	for file := range hl.hashes {
+		if _, ok := seen[file]; !ok {
+			return fmt.Errorf("file missing for %q", file)
+		}
+	}
+
+	return nil
+}
+
 // read takes a reader and extracts the snapshot metadata and the snapshot
 // itself, and also checks the integrity of the data. You must arrange to call
 // Close() on the returned object or else you will leak a temporary file.
@@ -565,7 +626,6 @@ func read(in io.Reader, metadata *raft.SnapshotMeta, snap io.Writer) error {
 
 	// Look through the archive for the pieces we care about.
 	var shaBuffer bytes.Buffer
-	var sealedSHABuffer bytes.Buffer
 	for {
 		hdr, err := archive.Next()
 		if err == io.EOF {
@@ -602,10 +662,8 @@ func read(in io.Reader, metadata *raft.SnapshotMeta, snap io.Writer) error {
 			}
 
 		case "SHA256SUMS.sealed":
-			// TODO: do we need this special func or can we just copy
-			if err := copyEOFOrN(&sealedSHABuffer, archive, 8192); err != nil {
-				return fmt.Errorf("failed to read snapshot hashes: %v", err)
-			}
+			// Add verification of sealed sum in future
+			continue
 
 		default:
 			return fmt.Errorf("unexpected file %q in snapshot", hdr.Name)
@@ -617,43 +675,7 @@ func read(in io.Reader, metadata *raft.SnapshotMeta, snap io.Writer) error {
 		return fmt.Errorf("failed checking integrity of snapshot: %v", err)
 	}
 
-	// TODO: also verify sha256sums.sealed
-	// opened, err := sealer.Open(context.Background(), sealedSHABuffer.Bytes())
-	// if err != nil {
-	// 	return fmt.Errorf("failed to open the sealed hashes: %v", err)
-	// }
-	// // Verify all the hashes.
-	// if err := hl.DecodeAndVerify(bytes.NewBuffer(opened)); err != nil {
-	// 	return fmt.Errorf("failed checking integrity of snapshot: %v", err)
-	// }
-
 	return nil
-}
-
-// copyEOFOrN copies until either EOF or maxBytesToRead was hit, or an error
-// occurs. If a non-EOF error occurs, return it
-func copyEOFOrN(dst io.Writer, src io.Reader, maxBytesToCopy int64) error {
-	copied, err := io.CopyN(dst, src, maxBytesToCopy)
-	if err == io.EOF {
-		return nil
-	}
-	if copied == maxBytesToCopy {
-		return fmt.Errorf("read max specified bytes (%d) without EOF - possible truncation", copied)
-	}
-
-	return err
-}
-
-// newHashList returns a new hashList.
-func newHashList() *hashList {
-	return &hashList{
-		hashes: make(map[string]hash.Hash),
-	}
-}
-
-// hashList manages a list of filenames and their hashes.
-type hashList struct {
-	hashes map[string]hash.Hash
 }
 
 // concludeGzipRead should be invoked after you think you've consumed all of
@@ -667,64 +689,6 @@ func concludeGzipRead(decomp *gzip.Reader) error {
 		return err
 	} else if len(extra) != 0 {
 		return fmt.Errorf("%d unread uncompressed bytes remain", len(extra))
-	}
-	return nil
-}
-
-// DecodeAndVerify reads a SHA256SUMS-style text file and checks the results
-// against the current sums for all the hashes.
-func (hl *hashList) DecodeAndVerify(r io.Reader) error {
-	// Read the file and make sure everything in there has a matching hash.
-	seen := make(map[string]struct{})
-	s := bufio.NewScanner(r)
-	for s.Scan() {
-		sha := make([]byte, sha256.Size)
-		var file string
-		if _, err := fmt.Sscanf(s.Text(), "%x  %s", &sha, &file); err != nil {
-			return err
-		}
-
-		h, ok := hl.hashes[file]
-		if !ok {
-			return fmt.Errorf("list missing hash for %q", file)
-		}
-		if !bytes.Equal(sha, h.Sum([]byte{})) {
-			return fmt.Errorf("hash check failed for %q", file)
-		}
-		seen[file] = struct{}{}
-	}
-	if err := s.Err(); err != nil {
-		return err
-	}
-
-	// Make sure everything we had a hash for was seen.
-	for file := range hl.hashes {
-		if _, ok := seen[file]; !ok {
-			return fmt.Errorf("file missing for %q", file)
-		}
-	}
-
-	return nil
-}
-
-// Add creates a new hash for the given file.
-func (hl *hashList) Add(file string) hash.Hash {
-	if existing, ok := hl.hashes[file]; ok {
-		return existing
-	}
-
-	h := sha256.New()
-	hl.hashes[file] = h
-	return h
-}
-
-// Encode takes the current sum of all the hashes and saves the hash list as a
-// SHA256SUMS-style text file.
-func (hl *hashList) Encode(w io.Writer) error {
-	for file, h := range hl.hashes {
-		if _, err := fmt.Fprintf(w, "%x  %s\n", h.Sum([]byte{}), file); err != nil {
-			return err
-		}
 	}
 	return nil
 }
