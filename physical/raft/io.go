@@ -45,6 +45,7 @@ type WriteCloser interface {
 
 type Reader interface {
 	ReadMsg(msg proto.Message) error
+	GetSize() int
 }
 
 type ReadCloser interface {

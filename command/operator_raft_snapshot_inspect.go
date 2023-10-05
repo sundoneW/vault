@@ -21,11 +21,10 @@ import (
 	"text/tabwriter"
 
 	iradix "github.com/hashicorp/go-immutable-radix"
-
-	protoio "github.com/hashicorp/vault/physical/raft"
+	"github.com/hashicorp/raft"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/raft"
+	protoio "github.com/hashicorp/vault/physical/raft"
 	"github.com/hashicorp/vault/sdk/plugin/pb"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -284,7 +283,7 @@ func (c *OperatorRaftSnapshotInspectCommand) enhance(file io.Reader) (SnapshotIn
 // ReadSnapshot decodes each message type and utilizes the handler function to
 // process each message type individually
 func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry, read int) error) (*iradix.Tree, error) {
-	protoReader := protoio.NewDelimitedReaderv2(r, math.MaxInt32)
+	reader := protoio.NewDelimitedReader(r, math.MaxInt32)
 
 	errCh := make(chan error, 1)
 	txn := iradix.New().Txn()
@@ -293,7 +292,7 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry, read int) error)
 		for {
 			s := new(pb.StorageEntry)
 
-			read, err := protoReader.ReadMsgWithBytes(s)
+			err := reader.ReadMsg(s)
 			if err != nil {
 				if err == io.EOF {
 					errCh <- nil
@@ -303,7 +302,9 @@ func ReadSnapshot(r io.Reader, handler func(s *pb.StorageEntry, read int) error)
 				return
 			}
 
-			handler(s, read)
+			size := reader.GetSize()
+
+			handler(s, size)
 
 			var value interface{} = struct{}{}
 			value = s.Value
