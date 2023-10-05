@@ -82,6 +82,14 @@ func NewDelimitedReader(r io.Reader, maxSize int) ReadCloser {
 	return &varintReader{bufio.NewReader(r), nil, maxSize, closer}
 }
 
+func NewDelimitedReaderv2(r io.Reader, maxSize int) *varintReader {
+	var closer io.Closer
+	if c, ok := r.(io.Closer); ok {
+		closer = c
+	}
+	return &varintReader{bufio.NewReader(r), nil, maxSize, closer}
+}
+
 type varintReader struct {
 	r       *bufio.Reader
 	buf     []byte
@@ -106,6 +114,26 @@ func (this *varintReader) ReadMsg(msg proto.Message) error {
 		return err
 	}
 	return proto.Unmarshal(buf, msg)
+}
+
+func (this *varintReader) ReadMsgWithBytes(msg proto.Message) (int, error) {
+	length64, err := binary.ReadUvarint(this.r)
+	if err != nil {
+		return 0, err
+	}
+	length := int(length64)
+	if length < 0 || length > this.maxSize {
+		return 0, io.ErrShortBuffer
+	}
+	if len(this.buf) < length {
+		this.buf = make([]byte, length)
+	}
+	buf := this.buf[:length]
+	bytesRead, err := io.ReadFull(this.r, buf)
+	if err != nil {
+		return 0, err
+	}
+	return bytesRead, proto.Unmarshal(buf, msg)
 }
 
 func (this *varintReader) Close() error {
