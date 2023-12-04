@@ -31,6 +31,9 @@ locals {
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
   consul_bin_path        = "${var.consul_install_dir}/consul"
+  # consul_bind_addr       = {
+  #   amazon_linux = "{{ GetInterfaceIP \"eth0\" }}"
+  # }
   enable_audit_devices   = var.enable_audit_devices && var.initialize_cluster
   // In order to get Terraform to plan we have to use collections with keys
   // that are known at plan time. In order for our module to work our var.target_hosts
@@ -149,6 +152,7 @@ resource "enos_consul_start" "consul" {
   bin_path = local.consul_bin_path
   data_dir = var.consul_data_dir
   config = {
+    bind_addr        = "{{ GetPrivateInterfaces | include \"type\" \"IP\" | sort \"default\" |  limit 1 | attr \"address\"}}"
     data_dir         = var.consul_data_dir
     datacenter       = "dc1"
     retry_join       = ["provider=aws tag_key=${var.backend_cluster_tag_key} tag_value=${var.backend_cluster_name}"]
