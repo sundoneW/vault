@@ -21,19 +21,12 @@ locals {
       "arm64" = "aarch64"
     }
     "packages"        = join(" ", var.packages)
-    "package_manager" = var.package_manager
-  }
-  distro_version_sles = {
-    "v15_sp4_standard" = "15.4"
-    "v15_sp5_standard" = "15.5"
+    # "package_manager" = var.package_manager
   }
   audit_device_file_path = "/var/log/vault/vault_audit.log"
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
   consul_bin_path        = "${var.consul_install_dir}/consul"
-  # consul_bind_addr       = {
-  #   amazon_linux = "{{ GetInterfaceIP \"eth0\" }}"
-  # }
   enable_audit_devices = var.enable_audit_devices && var.initialize_cluster
   // In order to get Terraform to plan we have to use collections with keys
   // that are known at plan time. In order for our module to work our var.target_hosts
@@ -91,7 +84,7 @@ resource "enos_remote_exec" "install_rpm_dependencies" {
 
   environment = {
     ARCH            = local.package_install_env.arch[var.arch]
-    PACKAGE_MANAGER = local.package_install_env["package_manager"]
+    PACKAGE_MANAGER = var.package_manager
   }
 
   scripts = [abspath("${path.module}/scripts/install-rpm-dependencies.sh")]
@@ -383,5 +376,10 @@ resource "enos_remote_exec" "enable_audit_devices" {
 #     enos_remote_exec.install_packages,
 #   ]
 
+<<<<<<< HEAD
 #   inline = ["true"]
 # }
+=======
+  inline = ["true"]
+}
+>>>>>>> e1fd4e11c9 (Begin refactoring to use host_info resource)

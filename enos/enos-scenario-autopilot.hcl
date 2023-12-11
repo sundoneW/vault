@@ -169,7 +169,7 @@ scenario "autopilot" {
     variables {
       arch                 = matrix.arch
       cluster_name         = step.create_vault_cluster_targets.cluster_name
-      distro_version_sles  = var.distro_version_sles
+      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_license.license : null
@@ -256,7 +256,7 @@ scenario "autopilot" {
       artifactory_release         = matrix.artifact_source == "artifactory" ? step.build_vault.vault_artifactory_release : null
       enable_audit_devices        = var.vault_enable_audit_devices
       cluster_name                = step.create_vault_cluster_targets.cluster_name
-      distro_version_sles         = var.distro_version_sles
+      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
       log_level                   = var.vault_log_level
       force_unseal                = matrix.seal == "shamir"
       initialize_cluster          = false

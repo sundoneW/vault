@@ -210,7 +210,7 @@ scenario "agent" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro_version_sles  = var.distro_version_sles
+      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null

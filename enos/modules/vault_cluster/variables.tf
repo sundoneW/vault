@@ -102,6 +102,12 @@ variable "consul_release" {
   }
 }
 
+variable "distro_version" {
+  type        = string
+  description = "The Linux distro version"
+  default     = null
+}
+
 variable "enable_audit_devices" {
   description = "If true every audit device will be enabled"
   type        = bool
@@ -223,12 +229,6 @@ variable "shamir_unseal_keys" {
   type        = list(string)
   description = "Shamir unseal keys. Often only used adding additional nodes to an already initialized cluster."
   default     = null
-}
-
-variable "distro_version_sles" {
-  type        = string
-  description = "The SLES distro version; sometimes required to install packages on certain SLES versions"
-  default     = "15.5" // or 15.4
 }
 
 variable "storage_backend" {
