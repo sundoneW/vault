@@ -28,10 +28,11 @@ locals {
       "amazon_linux" = {
         "amzn2" = data.aws_ami.amazon_linux_2["arm64"].id
       }
-      "leap" = {
-        "15.4" = data.aws_ami.leap_154["arm64"].id
-        "15.5" = data.aws_ami.leap_155["arm64"].id
-      }
+      # no longer available
+      # "leap" = {
+      #   "15.4" = data.aws_ami.leap_154["arm64"].id
+      #   "15.5" = data.aws_ami.leap_155["arm64"].id
+      # }
     }
     "amd64" = {
       "rhel" = {
@@ -48,8 +49,8 @@ locals {
         "amzn2" = data.aws_ami.amazon_linux_2["x86_64"].id
       }
       "leap" = {
-        "15.4" = data.aws_ami.leap_154["x86_64"].id
-        "15.5" = data.aws_ami.leap_155["x86_64"].id
+        "15.4" = data.aws_ami.leap_154.id
+        "15.5" = data.aws_ami.leap_155.id
       }
       "sles" = {
         "v15_sp4_standard" = data.aws_ami.sles_15_sp4_standard["x86_64"].id
@@ -214,9 +215,15 @@ data "aws_ami" "sles_15_sp4_standard" {
   most_recent = true
   for_each    = local.architectures
 
+  # filter {
+  #   name   = "description"
+  #   values = ["SUSE Linux Enterprise Server 15 SP4 (HVM*"]
+  # }
+
   filter {
-    name   = "description"
-    values = ["SUSE Linux Enterprise Server 15 SP4 (HVM*"]
+    name   = "name"
+    # TO DO: This is the only non-SAP version of SLES 15 SP4 that is available as an image; not sure if it's appropriate for our usage?
+    values = ["suse-sles-15-sp4-chost-byos-v*"]
   }
 
   filter {
@@ -231,9 +238,14 @@ data "aws_ami" "sles_15_sp5_standard" {
   most_recent = true
   for_each    = local.architectures
 
+  # filter {
+  #   name   = "description"
+  #   values = ["SUSE Linux Enterprise Server 15 SP5 (HVM*"]
+  # }
+
   filter {
-    name   = "description"
-    values = ["SUSE Linux Enterprise Server 15 SP5 (HVM*"]
+    name = "name"
+    values = ["suse-sles-15-sp5-v*"]
   }
 
   filter {
@@ -246,16 +258,17 @@ data "aws_ami" "sles_15_sp5_standard" {
 
 data "aws_ami" "leap_154" {
   most_recent = true
-  for_each    = local.architectures
+  # for_each    = local.architectures
 
   filter {
     name   = "name"
-    values = ["openSUSE-Leap-15-4*"]
+    values = ["openSUSE-Leap-15.4*"]
   }
 
   filter {
     name   = "architecture"
-    values = [each.value]
+    # values = [each.value]
+    values = ["x86_64"]
   }
 
   owners = [local.suse_owner_id]
@@ -263,16 +276,17 @@ data "aws_ami" "leap_154" {
 
 data "aws_ami" "leap_155" {
   most_recent = true
-  for_each    = local.architectures
+  # for_each    = local.architectures
 
   filter {
     name   = "name"
-    values = ["openSUSE-Leap-15-5*"]
+    values = ["openSUSE-Leap-15.5*"]
   }
 
   filter {
     name   = "architecture"
-    values = [each.value]
+    # values = [each.value]
+    values = ["x86_64"]
   }
 
   owners = [local.suse_owner_id]

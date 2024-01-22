@@ -31,10 +31,11 @@ scenario "smoke" {
       seal    = ["pkcs11"]
       edition = ["ce", "ent", "ent.fips1402"]
     }
-    
+
+    # TO DO: update comment and add Leap exclusion to all scenarios
     # non-SAP, non-BYOS SLES AMIs in the versions we use are only offered for amd64
     exclude {
-      distro = ["sles"]
+      distro = ["leap","sles"]
       arch   = ["arm64"]
     }
   }
@@ -165,18 +166,6 @@ scenario "smoke" {
     }
   }
 
-  step "get_host_info" {
-    module = module.get_host_info
-
-    providers = {
-      enos = local.enos_provider[matrix.distro]
-    }
-
-    variables {
-      hosts = step.create_vault_cluster_targets.hosts
-    }
-  }
-
   step "create_backend_cluster" {
     module = "backend_${matrix.backend}"
     depends_on = [
@@ -212,7 +201,7 @@ scenario "smoke" {
     }
 
     variables {
-      arch                    = step.get_host_info.results[0].arch
+      arch                    = matrix.arch
       artifactory_release     = matrix.artifact_source == "artifactory" ? step.build_vault.vault_artifactory_release : null
       backend_cluster_name    = step.create_vault_cluster_backend_targets.cluster_name
       backend_cluster_tag_key = global.backend_tag_key
@@ -223,7 +212,7 @@ scenario "smoke" {
         version = matrix.consul_version
       } : null
       // distro = matrix.distro
-      distro_version  = step.get_host_info.results[0].distro_version
+      // distro_version  = step.get_host_info.results[0].distro_version
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
@@ -452,9 +441,5 @@ scenario "smoke" {
   output "unseal_keys_hex" {
     description = "The Vault cluster unseal keys hex"
     value       = step.create_vault_cluster.unseal_keys_hex
-  }
-
-  output "host_info" {
-    value = step.get_host_info.results
   }
 }

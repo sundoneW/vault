@@ -9,6 +9,22 @@ terraform {
   }
 }
 
+locals {
+  arch = {
+    "amd64" = "x86_64"
+    "arm64" = "aarch64"
+  }
+  package_manager = {
+    "amzn"  = "yum"
+    "opensuse-leap" = "zypper"
+    "rhel"          = "yum"
+    "sles"     = "zypper"
+    "ubuntu"        = "apt"
+  }
+  # "packages"        = join(" ", var.packages)
+  # "package_manager" = var.package_manager
+}
+
 variable "packages" {
   type    = list(string)
   default = []
@@ -34,10 +50,23 @@ variable "retry_interval" {
   default     = 2
 }
 
+resource "enos_host_info" "hosts" {
+  for_each = var.hosts
+
+  transport = {
+    ssh = {
+      host = each.value.public_ip
+    }
+  }
+}
+
 resource "enos_remote_exec" "install_packages" {
   for_each = var.hosts
 
   environment = {
+    DISTRO = enos_host_info.hosts[each.key].distro
+    PACKAGE_MANAGER = local.package_manager[enos_host_info.hosts[each.key].distro]
+    # PACKAGE_MANAGER = "zypper"
     PACKAGES        = length(var.packages) >= 1 ? join(" ", var.packages) : "__skip"
     RETRY_INTERVAL  = var.retry_interval
     TIMEOUT_SECONDS = var.timeout

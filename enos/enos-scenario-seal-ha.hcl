@@ -363,7 +363,6 @@ scenario "seal_ha" {
     }
 
     variables {
-<<<<<<< HEAD
       cluster_name              = step.create_vault_cluster_targets.cluster_name
       install_dir               = local.vault_install_dir
       license                   = matrix.edition != "ce" ? step.read_vault_license.license : null
@@ -374,18 +373,6 @@ scenario "seal_ha" {
       seal_type_secondary       = matrix.secondary_seal
       storage_backend           = matrix.backend
       target_hosts              = step.create_vault_cluster_targets.hosts
-=======
-      cluster_name            = step.create_vault_cluster_targets.cluster_name
-      install_dir             = global.vault_install_dir[matrix.artifact_type]
-      license                 = matrix.edition != "ce" ? step.read_vault_license.license : null
-      manage_service          = local.manage_service
-      seal_type               = matrix.primary_seal
-      seal_key_name           = step.create_primary_seal_key.resource_name
-      seal_type_secondary     = matrix.secondary_seal
-      seal_key_name_secondary = step.create_secondary_seal_key.resource_name
-      storage_backend         = matrix.backend
-      target_hosts            = step.create_vault_cluster_targets.hosts
->>>>>>> 58110948c1 (Add Amazon Linux, openSUSE Leap, and SUSE SLES support to Enos scenarios and modules)
     }
   }
 

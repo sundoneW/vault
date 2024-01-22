@@ -35,6 +35,7 @@ globals {
     "sles"         = var.distro_version_sles
     "ubuntu"       = var.distro_version_ubuntu
   }
+  editions = ["ce", "ent", "ent.fips1402", "ent.hsm", "ent.hsm.fips1402"]
   package_manager = {
     "amazon_linux" = "yum"
     "leap"         = "zypper"
@@ -42,7 +43,6 @@ globals {
     "sles"         = "zypper"
     "ubuntu"       = "apt"
   }
-  editions = ["ce", "ent", "ent.fips1402", "ent.hsm", "ent.hsm.fips1402"]
   packages = ["jq"]
   sample_attributes = {
     aws_region = ["us-east-1", "us-west-2"]

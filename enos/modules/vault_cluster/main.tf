@@ -15,14 +15,14 @@ terraform {
 data "enos_environment" "localhost" {}
 
 locals {
-  package_install_env = {
-    arch = {
-      "amd64" = "x86_64"
-      "arm64" = "aarch64"
-    }
-    "packages"        = join(" ", var.packages)
-    # "package_manager" = var.package_manager
-  }
+  # package_install_env = {
+  #   arch = {
+  #     "amd64" = "x86_64"
+  #     "arm64" = "aarch64"
+  #   }
+  #   "packages"        = join(" ", var.packages)
+  #   # "package_manager" = var.package_manager
+  # }
   audit_device_file_path = "/var/log/vault/vault_audit.log"
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
@@ -74,32 +74,33 @@ resource "enos_bundle_install" "consul" {
   }
 }
 
-# For SUSE distros (Leap and SLES), we need to manually install some
-# packages in order to install Vault RPM packages later.
-resource "enos_remote_exec" "install_rpm_dependencies" {
-  for_each = {
-    for idx, host in var.target_hosts : idx => var.target_hosts[idx]
-    if length(var.packages) > 0
-  }
+# When using RPM packages of SUSE distros (Leap and SLES), we need to manually 
+# install some packages first, in order to enable installing the Vault RPM.
+# resource "enos_remote_exec" "install_rpm_dependencies" {
+#   for_each = {
+#     for idx, host in var.target_hosts : idx => var.target_hosts[idx]
+#     if length(var.packages) > 0
+#   }
 
-  environment = {
-    ARCH            = local.package_install_env.arch[var.arch]
-    PACKAGE_MANAGER = var.package_manager
-  }
+#   environment = {
+#     # ARCH            = var.target_hosts[0].distro
+#     ARCH = "amd64"
+#     PACKAGE_MANAGER = var.package_manager
+#   }
 
-  scripts = [abspath("${path.module}/scripts/install-rpm-dependencies.sh")]
+#   scripts = [abspath("${path.module}/scripts/install-rpm-dependencies.sh")]
 
-  transport = {
-    ssh = {
-      host = each.value.public_ip
-    }
-  }
-}
+#   transport = {
+#     ssh = {
+#       host = each.value.public_ip
+#     }
+#   }
+# }
 
 resource "enos_bundle_install" "vault" {
-  depends_on = [
-    enos_remote_exec.install_rpm_dependencies,
-  ]
+  # depends_on = [
+  #   enos_remote_exec.install_rpm_dependencies,
+  # ]
   for_each = var.target_hosts
 
   destination = var.install_dir
@@ -376,10 +377,7 @@ resource "enos_remote_exec" "enable_audit_devices" {
 #     enos_remote_exec.install_packages,
 #   ]
 
-<<<<<<< HEAD
 #   inline = ["true"]
 # }
-=======
-  inline = ["true"]
-}
->>>>>>> e1fd4e11c9 (Begin refactoring to use host_info resource)
+#   inline = ["true"]
+# }
