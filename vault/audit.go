@@ -62,6 +62,44 @@ func (c *Core) generateAuditTestProbe() (*logical.LogInput, error) {
 	}, nil
 }
 
+// isAuditEntryDistinct checks some basic properties of an audit MountEntry to
+// determine if it is distinct amongst other audit devices.
+// Depending on the type of audit device, it will examine supplied options to
+// ensure devices with different paths cannot use the same sink.
+func isAuditEntryDistinct(m1 *MountEntry, m2 *MountEntry) (bool, error) {
+	// Examples:
+	// existing: 'sql/mysql/', new: 'sql/mysql/' or
+	// existing: 'sql/mysql/', new: 'sql/' or
+	// existing: 'sql/', new: 'sql/mysql/'
+	if strings.EqualFold(m1.Path, m2.Path) || strings.HasPrefix(m1.Path, m2.Path) || strings.HasPrefix(m2.Path, m1.Path) {
+		return false, fmt.Errorf("path already in use: %q", m2.Path)
+	}
+
+	// Depending on which audit device type we have, check the relevant option
+	// to ensure it doesn't already exist.
+	var opt string
+	switch m1.Type {
+	case "file":
+		opt = "file_path"
+	case "socket":
+		opt = "address"
+	case "syslog":
+		opt = "facility"
+	default:
+		// Not an audit entry
+		return false, fmt.Errorf("unexpected 'type' for audit: %q", m1.Type)
+	}
+
+	opt1 := m1.Options[opt]
+	opt2 := m2.Options[opt]
+
+	if isMatch := strings.EqualFold(opt1, opt2); isMatch {
+		return false, fmt.Errorf("%q %q already in use on device: %q", opt, opt1, m2.Path)
+	}
+
+	return true, nil
+}
+
 // enableAudit is used to enable a new audit backend
 func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	// Ensure we end the path in a slash
@@ -89,17 +127,15 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 	c.auditLock.Lock()
 	defer c.auditLock.Unlock()
 
-	// Look for matching name
-	for _, ent := range c.audit.Entries {
-		switch {
-		case entry.Options["fallback"] == "true" && ent.Options["fallback"] == "true":
-			return fmt.Errorf("unable to enable audit device '%s', a fallback device already exists '%s'", entry.Path, ent.Path)
-		// Existing is sql/mysql/ new is sql/ or
-		// existing is sql/ and new is sql/mysql/
-		case strings.HasPrefix(ent.Path, entry.Path):
-			fallthrough
-		case strings.HasPrefix(entry.Path, ent.Path):
-			return fmt.Errorf("path already in use")
+	for _, existing := range c.audit.Entries {
+		// Only a single fallback device can be enabled globally in Vault
+		if entry.Options["fallback"] == "true" && existing.Options["fallback"] == "true" {
+			return fmt.Errorf("unable to enable audit device '%s', a fallback device already exists '%s'", entry.Path, existing.Path)
+		}
+
+		// Ensure this entry is distinct enough from other entries.
+		if ok, err := isAuditEntryDistinct(entry, existing); !ok {
+			return err
 		}
 	}
 
