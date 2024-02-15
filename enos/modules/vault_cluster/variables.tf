@@ -102,6 +102,11 @@ variable "consul_release" {
   }
 }
 
+variable "distro" {
+  type = string
+  description = "The Linux distro being used"
+}
+
 variable "distro_version" {
   type        = string
   description = "The Linux distro version"

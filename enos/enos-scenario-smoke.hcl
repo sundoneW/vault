@@ -38,6 +38,13 @@ scenario "smoke" {
       distro = ["leap","sles"]
       arch   = ["arm64"]
     }
+
+    # TO DO: add this exclusion to all scenarios
+    # softhsm packages not available for SUSE distros
+    exclude {
+      seal    = ["pkcs11"]
+      distro = ["leap", "sles"]
+    }
   }
 
   terraform_cli = terraform_cli.default
@@ -211,8 +218,7 @@ scenario "smoke" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      // distro = matrix.distro
-      // distro_version  = step.get_host_info.results[0].distro_version
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null

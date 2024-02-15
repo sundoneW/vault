@@ -18,14 +18,13 @@ globals {
     "ent.hsm.fips1402" = ["ui", "enterprise", "cgo", "hsm", "fips", "fips_140_2", "ent.hsm.fips1402"]
   }
   consul_editions  = ["ce", "ent"]
-  # TO DO: rename consul_version?
   consul_versions = ["1.14.11", "1.15.7", "1.16.3", "1.17.0"]
   distros         = ["amazon_linux", "leap", "rhel", "sles", "ubuntu"]
   distro_packages = {
     amazon_linux = ["nc"]
     leap         = ["netcat"]
     rhel         = ["nc"]
-    sles         = ["netcat"]
+    sles         = ["ncat"]
     ubuntu       = ["netcat"]
   }
   distro_version = {

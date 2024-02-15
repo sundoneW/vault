@@ -74,33 +74,7 @@ resource "enos_bundle_install" "consul" {
   }
 }
 
-# When using RPM packages of SUSE distros (Leap and SLES), we need to manually 
-# install some packages first, in order to enable installing the Vault RPM.
-# resource "enos_remote_exec" "install_rpm_dependencies" {
-#   for_each = {
-#     for idx, host in var.target_hosts : idx => var.target_hosts[idx]
-#     if length(var.packages) > 0
-#   }
-
-#   environment = {
-#     # ARCH            = var.target_hosts[0].distro
-#     ARCH = "amd64"
-#     PACKAGE_MANAGER = var.package_manager
-#   }
-
-#   scripts = [abspath("${path.module}/scripts/install-rpm-dependencies.sh")]
-
-#   transport = {
-#     ssh = {
-#       host = each.value.public_ip
-#     }
-#   }
-# }
-
 resource "enos_bundle_install" "vault" {
-  # depends_on = [
-  #   enos_remote_exec.install_rpm_dependencies,
-  # ]
   for_each = var.target_hosts
 
   destination = var.install_dir
@@ -123,21 +97,6 @@ module "install_packages" {
 
   hosts    = var.target_hosts
   packages = var.packages
-
-  # environment = {
-  #   ARCH            = local.package_install_env.arch[var.arch]
-  #   PACKAGES        = local.package_install_env["packages"]
-  #   PACKAGE_MANAGER = local.package_install_env["package_manager"]
-  #   SLES_VERSION    = local.distro_version_sles[var.distro_version_sles]
-  # }
-
-  # scripts = [abspath("${path.module}/scripts/install-packages.sh")]
-
-  # transport = {
-  #   ssh = {
-  #     host = each.value.public_ip
-  #   }
-  # }
 }
 
 resource "enos_consul_start" "consul" {
@@ -177,6 +136,7 @@ module "start_vault" {
 
   cluster_name              = var.cluster_name
   config_dir                = var.config_dir
+  distro = var.distro
   install_dir               = var.install_dir
   license                   = var.license
   log_level                 = var.log_level

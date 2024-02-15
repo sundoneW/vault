@@ -21,8 +21,14 @@ locals {
     "sles"     = "zypper"
     "ubuntu"        = "apt"
   }
-  # "packages"        = join(" ", var.packages)
-  # "package_manager" = var.package_manager
+  distro_repos = {
+    "amzn"  = []
+    "opensuse-leap" = []
+    "rhel"          = []
+    # TO DO: need to find a way to not hardcode the SLE SP version here
+    "sles"     = ["https://download.opensuse.org/repositories/network:utilities/SLE_15_SP5/network:utilities.repo"]
+    "ubuntu"        = []
+  }
 }
 
 variable "packages" {
@@ -60,13 +66,34 @@ resource "enos_host_info" "hosts" {
   }
 }
 
-resource "enos_remote_exec" "install_packages" {
+# Set up repos for each distro (in order to install some packages, some distros
+# require us to manually add the repo for that package first)
+resource "enos_remote_exec" "distro_repo_setup" {
   for_each = var.hosts
 
   environment = {
     DISTRO = enos_host_info.hosts[each.key].distro
+    DISTRO_REPOS = length(local.distro_repos[enos_host_info.hosts[each.key].distro]) >= 1 ? join(" ", local.distro_repos[enos_host_info.hosts[each.key].distro]) : ""
+    RETRY_INTERVAL  = var.retry_interval
+    TIMEOUT_SECONDS = var.timeout
+  }
+
+  scripts = [abspath("${path.module}/scripts/distro-repo-setup.sh")]
+
+  transport = {
+    ssh = {
+      host = each.value.public_ip
+    }
+  }
+}
+
+resource "enos_remote_exec" "install_packages" {
+  for_each = var.hosts
+  depends_on = [ enos_remote_exec.distro_repo_setup ]
+
+  environment = {
+    DISTRO = enos_host_info.hosts[each.key].distro
     PACKAGE_MANAGER = local.package_manager[enos_host_info.hosts[each.key].distro]
-    # PACKAGE_MANAGER = "zypper"
     PACKAGES        = length(var.packages) >= 1 ? join(" ", var.packages) : "__skip"
     RETRY_INTERVAL  = var.retry_interval
     TIMEOUT_SECONDS = var.timeout
