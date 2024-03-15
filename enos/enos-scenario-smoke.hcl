@@ -41,7 +41,7 @@ scenario "smoke" {
     # softhsm packages not available for leap/sles; softhsm functionalities
     # problematic on amzn2
     exclude {
-      seal    = ["pkcs11"]
+      seal   = ["pkcs11"]
       distro = ["amzn2", "leap", "sles"]
     }
   }
@@ -57,11 +57,11 @@ scenario "smoke" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amzn2 = provider.enos.ec2_user
-      leap         = provider.enos.ec2_user
-      rhel         = provider.enos.ec2_user
-      sles         = provider.enos.ec2_user
-      ubuntu       = provider.enos.ubuntu
+      amzn2  = provider.enos.ec2_user
+      leap   = provider.enos.ec2_user
+      rhel   = provider.enos.ec2_user
+      sles   = provider.enos.ec2_user
+      ubuntu = provider.enos.ubuntu
     }
     manage_service = matrix.artifact_type == "bundle"
   }
@@ -217,7 +217,7 @@ scenario "smoke" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro = matrix.distro
+      distro               = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null

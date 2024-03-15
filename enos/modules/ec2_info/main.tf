@@ -9,7 +9,7 @@
 
 locals {
   architectures      = toset(["arm64", "x86_64"])
-  amzn2_owner_id    = "591542846629"
+  amzn2_owner_id     = "591542846629"
   canonical_owner_id = "099720109477"
   sles_owner_id      = "013907871322"
   suse_owner_id      = "679593333241"
@@ -36,7 +36,7 @@ locals {
       "amzn2" = {
         "2" = data.aws_ami.amzn2["x86_64"].id
       }
-       "leap" = {
+      "leap" = {
         "15.4" = data.aws_ami.leap_154.id
         "15.5" = data.aws_ami.leap_155.id
       }
@@ -213,7 +213,7 @@ data "aws_ami" "sles_15_sp5_standard" {
   for_each    = local.architectures
 
   filter {
-    name = "name"
+    name   = "name"
     values = ["suse-sles-15-sp5-v*-hvm-*"]
   }
 
@@ -251,7 +251,7 @@ data "aws_ami" "leap_155" {
   }
 
   filter {
-    name   = "architecture"
+    name = "architecture"
     # Note: arm64 AMIs are offered for Leap 15.5, but not 15.4. For now we will
     # only use x86_64 for both in order to not introduce complexity in our matrix
     # exclusions.

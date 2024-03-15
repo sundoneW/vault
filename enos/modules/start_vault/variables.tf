@@ -13,7 +13,7 @@ variable "config_dir" {
 }
 
 variable "distro" {
-  type = string
+  type        = string
   description = "The Linux distro being used"
 }
 

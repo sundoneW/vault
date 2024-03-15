@@ -44,7 +44,6 @@ install_packages() {
         sudo yum -y install "${package}"
       fi
     done
-    # eval sudo yum -y install "${PACKAGES[@]}"
   elif [ "$PACKAGE_MANAGER" = "zypper" ]; then
     set -x
     cd /tmp

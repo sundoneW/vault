@@ -3,10 +3,10 @@
 
 scenario "ui" {
   matrix {
-    backend      = global.backends
-    consul_edition  = global.consul_editions
-    edition      = ["ce", "ent"]
-    seal_ha_beta = ["true", "false"]
+    backend        = global.backends
+    consul_edition = global.consul_editions
+    edition        = ["ce", "ent"]
+    seal_ha_beta   = ["true", "false"]
   }
 
   terraform_cli = terraform_cli.default
@@ -173,7 +173,7 @@ scenario "ui" {
         edition = matrix.consul_edition
         version = local.consul_version
       } : null
-      distro = matrix.distro
+      distro               = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null

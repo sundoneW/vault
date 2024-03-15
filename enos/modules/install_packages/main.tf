@@ -17,28 +17,28 @@ locals {
   package_manager = {
     # Note: though we generally use "amzn2" as our distro name for Amazon Linux 2, 
     # enos_host_info.hosts[each.key].distro returns "amzn", so that is what we reference here.
-    "amzn"  = "yum"
+    "amzn"          = "yum"
     "opensuse-leap" = "zypper"
     "rhel"          = "yum"
-    "sles"     = "zypper"
+    "sles"          = "zypper"
     "ubuntu"        = "apt"
   }
   distro_repos = {
-    "amzn"  = {
+    "amzn" = {
       "2" = []
     }
     "opensuse-leap" = {
       "15.4" = []
       "15.5" = []
     }
-    "rhel"          = {
+    "rhel" = {
       "8.8" = []
       "9.1" = []
     }
-    "sles"     = {
+    "sles" = {
       "15.5" = ["https://download.opensuse.org/repositories/network:utilities/SLE_15_SP5/network:utilities.repo"]
     }
-    "ubuntu"        = {
+    "ubuntu" = {
       "18.04" = []
       "20.04" = []
       "22.04" = []
@@ -87,13 +87,10 @@ resource "enos_remote_exec" "distro_repo_setup" {
   for_each = var.hosts
 
   environment = {
-    DISTRO = enos_host_info.hosts[each.key].distro
-    # DISTRO_VERSION = enos_host_info.hosts[each.key].distro_version
-    DISTRO_REPOS = length(local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) >= 1 ? join(" ", local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) : ""
+    DISTRO          = enos_host_info.hosts[each.key].distro
+    DISTRO_REPOS    = length(local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) >= 1 ? join(" ", local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) : ""
     RETRY_INTERVAL  = var.retry_interval
     TIMEOUT_SECONDS = var.timeout
-    DISTRO_NAME = enos_host_info.hosts[each.key].distro
-    DISTRO_VERSION = enos_host_info.hosts[each.key].distro_version
   }
 
   scripts = [abspath("${path.module}/scripts/distro-repo-setup.sh")]
@@ -106,11 +103,10 @@ resource "enos_remote_exec" "distro_repo_setup" {
 }
 
 resource "enos_remote_exec" "install_packages" {
-  for_each = var.hosts
-  depends_on = [ enos_remote_exec.distro_repo_setup ]
+  for_each   = var.hosts
+  depends_on = [enos_remote_exec.distro_repo_setup]
 
   environment = {
-    DISTRO = enos_host_info.hosts[each.key].distro
     PACKAGE_MANAGER = local.package_manager[enos_host_info.hosts[each.key].distro]
     PACKAGES        = length(var.packages) >= 1 ? join(" ", var.packages) : "__skip"
     RETRY_INTERVAL  = var.retry_interval

@@ -31,7 +31,7 @@ scenario "proxy" {
       seal    = ["pkcs11"]
       edition = ["ce", "ent", "ent.fips1402"]
     }
-    
+
     # arm64 AMIs are not offered for Leap 15.4
     exclude {
       distro = ["leap"]
@@ -41,7 +41,7 @@ scenario "proxy" {
     # softhsm packages not available for leap/sles; softhsm functionalities
     # problematic on amzn2
     exclude {
-      seal    = ["pkcs11"]
+      seal   = ["pkcs11"]
       distro = ["amzn2", "leap", "sles"]
     }
   }
@@ -57,11 +57,11 @@ scenario "proxy" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amzn2 = provider.enos.ec2_user
-      leap         = provider.enos.ec2_user
-      rhel         = provider.enos.ec2_user
-      sles         = provider.enos.ec2_user
-      ubuntu       = provider.enos.ubuntu
+      amzn2  = provider.enos.ec2_user
+      leap   = provider.enos.ec2_user
+      rhel   = provider.enos.ec2_user
+      sles   = provider.enos.ec2_user
+      ubuntu = provider.enos.ubuntu
     }
     manage_service    = matrix.artifact_type == "bundle"
     vault_install_dir = global.vault_install_dir[matrix.artifact_type]
@@ -148,7 +148,7 @@ scenario "proxy" {
     }
 
     variables {
-      ami_id          = step.ec2_info.ami_ids[matrix.arch][matrix.distro][global.distro_version[matrix.distro]]
+      ami_id = step.ec2_info.ami_ids[matrix.arch][matrix.distro][global.distro_version[matrix.distro]]
       # ami_id = "ami-08f3662e2d5b3989a"
       cluster_tag_key = global.vault_tag_key
       common_tags     = global.tags
@@ -219,7 +219,7 @@ scenario "proxy" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro = matrix.distro
+      distro               = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null

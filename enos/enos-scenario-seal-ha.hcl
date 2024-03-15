@@ -37,7 +37,7 @@ scenario "seal_ha" {
       secondary_seal = ["pkcs11"]
       edition        = ["ce", "ent", "ent.fips1402"]
     }
-    
+
     # arm64 AMIs are not offered for Leap 15.4
     exclude {
       distro = ["leap"]
@@ -47,7 +47,7 @@ scenario "seal_ha" {
     # softhsm packages not available for leap/sles; softhsm functionalities
     # problematic on amzn2
     exclude {
-      seal    = ["pkcs11"]
+      seal   = ["pkcs11"]
       distro = ["amzn2", "leap", "sles"]
     }
   }
@@ -63,11 +63,11 @@ scenario "seal_ha" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amzn2 = provider.enos.ec2_user
-      leap         = provider.enos.ec2_user
-      rhel         = provider.enos.ec2_user
-      sles         = provider.enos.ec2_user
-      ubuntu       = provider.enos.ubuntu
+      amzn2  = provider.enos.ec2_user
+      leap   = provider.enos.ec2_user
+      rhel   = provider.enos.ec2_user
+      sles   = provider.enos.ec2_user
+      ubuntu = provider.enos.ubuntu
     }
     manage_service = matrix.artifact_type == "bundle"
   }
@@ -240,7 +240,7 @@ scenario "seal_ha" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro = matrix.distro
+      distro               = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
@@ -370,12 +370,11 @@ scenario "seal_ha" {
     }
 
     variables {
-      distro = matrix.distro
-      cluster_name              = step.create_vault_cluster_targets.cluster_name
-      install_dir               = global.vault_install_dir[matrix.artifact_type]
-      license                   = matrix.edition != "ce" ? step.read_vault_license.license : null
-      manage_service            = local.manage_service
-      # packages             = concat(global.packages, global.distro_packages[matrix.distro])
+      distro         = matrix.distro
+      cluster_name   = step.create_vault_cluster_targets.cluster_name
+      install_dir    = global.vault_install_dir[matrix.artifact_type]
+      license        = matrix.edition != "ce" ? step.read_vault_license.license : null
+      manage_service = local.manage_service
       seal_attributes           = step.create_primary_seal_key.attributes
       seal_attributes_secondary = step.create_secondary_seal_key.attributes
       seal_type                 = matrix.primary_seal
@@ -577,12 +576,11 @@ scenario "seal_ha" {
     }
 
     variables {
-      cluster_name    = step.create_vault_cluster_targets.cluster_name
-      distro = matrix.distro
-      install_dir     = global.vault_install_dir[matrix.artifact_type]
-      license         = matrix.edition != "ce" ? step.read_vault_license.license : null
-      manage_service  = local.manage_service
-      # packages             = concat(global.packages, global.distro_packages[matrix.distro])
+      cluster_name   = step.create_vault_cluster_targets.cluster_name
+      distro         = matrix.distro
+      install_dir    = global.vault_install_dir[matrix.artifact_type]
+      license        = matrix.edition != "ce" ? step.read_vault_license.license : null
+      manage_service = local.manage_service
       seal_alias      = "secondary"
       seal_attributes = step.create_secondary_seal_key.attributes
       seal_type       = matrix.secondary_seal

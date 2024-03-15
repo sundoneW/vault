@@ -34,7 +34,7 @@ scenario "autopilot" {
       seal    = ["pkcs11"]
       edition = ["ce", "ent", "ent.fips1402"]
     }
-    
+
     # arm64 AMIs are not offered for Leap 15.4
     exclude {
       distro = ["leap"]
@@ -44,7 +44,7 @@ scenario "autopilot" {
     # softhsm packages not available for leap/sles; softhsm functionalities
     # problematic on amzn2
     exclude {
-      seal    = ["pkcs11"]
+      seal   = ["pkcs11"]
       distro = ["amzn2", "leap", "sles"]
     }
   }
@@ -60,14 +60,14 @@ scenario "autopilot" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amzn2 = provider.enos.ec2_user
-      leap         = provider.enos.ec2_user
-      rhel         = provider.enos.ec2_user
-      sles         = provider.enos.ec2_user
-      ubuntu       = provider.enos.ubuntu
+      amzn2  = provider.enos.ec2_user
+      leap   = provider.enos.ec2_user
+      rhel   = provider.enos.ec2_user
+      sles   = provider.enos.ec2_user
+      ubuntu = provider.enos.ubuntu
     }
     manage_service                     = matrix.artifact_type == "bundle"
-    vault_install_dir = global.vault_install_dir[matrix.artifact_type]
+    vault_install_dir                  = global.vault_install_dir[matrix.artifact_type]
     vault_autopilot_default_max_leases = semverconstraint(matrix.initial_version, ">=1.16.0-0") ? "300000" : ""
   }
 
@@ -175,7 +175,7 @@ scenario "autopilot" {
     variables {
       arch                 = matrix.arch
       cluster_name         = step.create_vault_cluster_targets.cluster_name
-      distro = matrix.distro
+      distro               = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_license.license : null
@@ -262,7 +262,7 @@ scenario "autopilot" {
       artifactory_release         = matrix.artifact_source == "artifactory" ? step.build_vault.vault_artifactory_release : null
       enable_audit_devices        = var.vault_enable_audit_devices
       cluster_name                = step.create_vault_cluster_targets.cluster_name
-      distro = matrix.distro
+      distro                      = matrix.distro
       log_level                   = var.vault_log_level
       force_unseal                = matrix.seal == "shamir"
       initialize_cluster          = false
@@ -629,18 +629,18 @@ scenario "autopilot" {
     value       = step.create_vault_cluster.unseal_keys_hex
   }
 
-  // output "upgrade_hosts" {
-  //   description = "The Vault cluster target hosts"
-  //   value       = step.upgrade_vault_cluster_with_autopilot.target_hosts
-  // }
+  output "upgrade_hosts" {
+    description = "The Vault cluster target hosts"
+    value       = step.upgrade_vault_cluster_with_autopilot.target_hosts
+  }
 
-  // output "upgrade_private_ips" {
-  //   description = "The Vault cluster private IPs"
-  //   value       = step.upgrade_vault_cluster_with_autopilot.private_ips
-  // }
+  output "upgrade_private_ips" {
+    description = "The Vault cluster private IPs"
+    value       = step.upgrade_vault_cluster_with_autopilot.private_ips
+  }
 
-  // output "upgrade_public_ips" {
-  //   description = "The Vault cluster public IPs"
-  //   value       = step.upgrade_vault_cluster_with_autopilot.public_ips
-  // }
+  output "upgrade_public_ips" {
+    description = "The Vault cluster public IPs"
+    value       = step.upgrade_vault_cluster_with_autopilot.public_ips
+  }
 }

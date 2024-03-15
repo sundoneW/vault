@@ -72,7 +72,7 @@ variable "project_name" {
 variable "distro_version_amzn2" {
   description = "The version of Amazon Linux 2 to use"
   type        = string
-  default     = "2" // currently this is the only version we support
+  default     = "2"
 }
 
 variable "distro_version_leap" {
@@ -90,7 +90,7 @@ variable "distro_version_rhel" {
 variable "distro_version_sles" {
   description = "The version of SUSE SLES to use"
   type        = string
-  default     = "v15_sp5_standard" // currently this is the only version we support
+  default     = "v15_sp5_standard"
 }
 
 variable "distro_version_ubuntu" {

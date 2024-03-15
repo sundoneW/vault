@@ -13,9 +13,6 @@ fail() {
 [[ -z "$RETRY_INTERVAL" ]] && fail "RETRY_INTERVAL env variable has not been set"
 [[ -z "$TIMEOUT_SECONDS" ]] && fail "TIMEOUT_SECONDS env variable has not been set"
 
-# fail "DISTRO_VERSION is ${DISTRO_VERSION}"
-# fail "DISTRO is ${DISTRO}"
-
 setup_repos() {
   # If we don't have any repos on the list for this distro, no action needed.
   if [ ${#DISTRO_REPOS[@]} -lt 1 ]; then

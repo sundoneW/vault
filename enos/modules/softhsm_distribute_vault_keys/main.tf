@@ -26,10 +26,10 @@ variable "token_base64" {
 locals {
   // The user/group name for softhsm
   softhsm_groups = {
-    "amzn" = "ods"
-    "opensuse-leap" = "ods"
-    "rhel"   = "ods"
-    "sles" = "ods"
+    # "amzn" = "ods"
+    # "opensuse-leap" = "ods"
+    "rhel" = "ods"
+    # "sles" = "ods"
     "ubuntu" = "softhsm"
   }
 

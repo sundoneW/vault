@@ -39,10 +39,6 @@ module "ec2_info" {
   source = "./modules/ec2_info"
 }
 
-module "get_host_info" {
-  source = "./modules/get_host_info"
-}
-
 module "get_local_metadata" {
   source = "./modules/get_local_metadata"
 }

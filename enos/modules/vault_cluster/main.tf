@@ -7,7 +7,7 @@ terraform {
     # to the public registry
     enos = {
       source  = "app.terraform.io/hashicorp-qti/enos"
-      version = ">= 0.4.8"
+      version = ">= 0.4.0"
     }
   }
 }
@@ -15,11 +15,15 @@ terraform {
 data "enos_environment" "localhost" {}
 
 locals {
+  distro_version_sles = {
+    "v15_sp4_standard" = "15.4"
+    "v15_sp5_standard" = "15.5"
+  }
   audit_device_file_path = "/var/log/vault/vault_audit.log"
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
   consul_bin_path        = "${var.consul_install_dir}/consul"
-  enable_audit_devices = var.enable_audit_devices && var.initialize_cluster
+  enable_audit_devices   = var.enable_audit_devices && var.initialize_cluster
   // In order to get Terraform to plan we have to use collections with keys
   // that are known at plan time. In order for our module to work our var.target_hosts
   // must be a map with known keys at plan time. Here we're creating locals
@@ -38,11 +42,11 @@ locals {
   }
   leader = toset(slice(local.instances, 0, 1))
   netcat_command = {
-    amzn2 = "nc"
-    leap         = "netcat"
-    rhel         = "nc"
-    sles         = "ncat"
-    ubuntu       = "netcat"
+    amzn2  = "nc"
+    leap   = "netcat"
+    rhel   = "nc"
+    sles   = "ncat"
+    ubuntu = "netcat"
   }
   recovery_shares = {
     "awskms" = 5
@@ -78,7 +82,7 @@ resource "enos_bundle_install" "consul" {
 # be packages that are required to perform Vault installation (e.g. openssl).
 module "install_packages" {
   source = "../install_packages"
-  
+
   hosts    = var.target_hosts
   packages = var.packages
 }
@@ -105,6 +109,7 @@ resource "enos_consul_start" "consul" {
   for_each = enos_bundle_install.consul
 
   bin_path = local.consul_bin_path
+  data_dir = var.consul_data_dir
   config = {
     bind_addr        = "{{ GetPrivateInterfaces | include \"type\" \"IP\" | sort \"default\" |  limit 1 | attr \"address\"}}"
     data_dir         = var.consul_data_dir
@@ -116,7 +121,6 @@ resource "enos_consul_start" "consul" {
     log_level        = var.consul_log_level
     log_file         = var.consul_log_file
   }
-  data_dir = var.consul_data_dir
   license   = var.consul_license
   unit_name = "consul"
   username  = "consul"
@@ -138,7 +142,7 @@ module "start_vault" {
 
   cluster_name              = var.cluster_name
   config_dir                = var.config_dir
-  distro = var.distro
+  distro                    = var.distro
   install_dir               = var.install_dir
   license                   = var.license
   log_level                 = var.log_level
@@ -284,7 +288,6 @@ resource "enos_remote_exec" "create_audit_log_dir" {
 # listener is running.
 resource "enos_remote_exec" "start_audit_socket_listener" {
   depends_on = [
-    module.install_packages,
     module.start_vault,
     enos_vault_unseal.leader,
     enos_vault_unseal.followers,
@@ -297,7 +300,7 @@ resource "enos_remote_exec" "start_audit_socket_listener" {
 
   environment = {
     NETCAT_COMMAND = local.netcat_command[var.distro]
-    SOCKET_PORT = local.audit_socket_port
+    SOCKET_PORT    = local.audit_socket_port
   }
 
   scripts = [abspath("${path.module}/scripts/start-audit-socket-listener.sh")]
@@ -335,13 +338,3 @@ resource "enos_remote_exec" "enable_audit_devices" {
     }
   }
 }
-
-# resource "enos_local_exec" "wait_for_install_packages" {
-#   depends_on = [
-#     enos_remote_exec.install_packages,
-#   ]
-
-#   inline = ["true"]
-# }
-#   inline = ["true"]
-# }

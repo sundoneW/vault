@@ -2,13 +2,12 @@
 # SPDX-License-Identifier: BUSL-1.1
 
 globals {
-  archs            = ["amd64", "arm64"]
-  artifact_sources = ["local", "crt", "artifactory"]
-  artifact_types   = ["bundle", "package"]
-  backends         = ["consul", "raft"]
+  archs                = ["amd64", "arm64"]
+  artifact_sources     = ["local", "crt", "artifactory"]
+  artifact_types       = ["bundle", "package"]
+  backends             = ["consul", "raft"]
   backend_license_path = abspath(var.backend_license_path != null ? var.backend_license_path : joinpath(path.root, "./support/consul.hclic"))
-  backend_tag_key  = "VaultStorage"
-
+  backend_tag_key      = "VaultStorage"
   build_tags = {
     "ce"               = ["ui"]
     "ent"              = ["ui", "enterprise", "ent"]
@@ -16,43 +15,43 @@ globals {
     "ent.hsm"          = ["ui", "enterprise", "cgo", "hsm", "venthsm"]
     "ent.hsm.fips1402" = ["ui", "enterprise", "cgo", "hsm", "fips", "fips_140_2", "ent.hsm.fips1402"]
   }
-  consul_editions  = ["ce", "ent"]
+  consul_editions = ["ce", "ent"]
   consul_versions = ["1.14.11", "1.15.7", "1.16.3", "1.17.0"]
   distros         = ["amzn2", "leap", "rhel", "sles", "ubuntu"]
-  # Any packages that have different names on different distros
+  # Different distros may require different packages, or use different aliases for the same package
   distro_packages = {
     amzn2 = ["nc"]
-    leap         = ["netcat"]
-    rhel         = ["nc"]
+    leap  = ["netcat"]
+    rhel  = ["nc"]
     # When installing Vault RPM packages, SLES searches for openssl by a different name
     # than the one that comes pre-installed on the AMI. Therefore we add the
     # "correctly" named one in our package installation before installing Vault.
-    sles         = ["ncat", "openssl"]
-    ubuntu       = ["netcat"]
+    sles   = ["ncat", "openssl"]
+    ubuntu = ["netcat"]
   }
   distro_version = {
-    "amzn2" = var.distro_version_amzn2
-    "leap"         = var.distro_version_leap
-    "rhel"         = var.distro_version_rhel
-    "sles"         = var.distro_version_sles
-    "ubuntu"       = var.distro_version_ubuntu
+    "amzn2"  = var.distro_version_amzn2
+    "leap"   = var.distro_version_leap
+    "rhel"   = var.distro_version_rhel
+    "sles"   = var.distro_version_sles
+    "ubuntu" = var.distro_version_ubuntu
   }
   editions = ["ce", "ent", "ent.fips1402", "ent.hsm", "ent.hsm.fips1402"]
   package_manager = {
-    "amzn2" = "yum"
-    "leap"         = "zypper"
-    "rhel"         = "yum"
-    "sles"         = "zypper"
-    "ubuntu"       = "apt"
+    "amzn2"  = "yum"
+    "leap"   = "zypper"
+    "rhel"   = "yum"
+    "sles"   = "zypper"
+    "ubuntu" = "apt"
   }
   packages = ["jq"]
   sample_attributes = {
-    aws_region = ["us-east-1", "us-west-2"]
-    distro_version_amzn2 = ["2"]
-    distro_version_leap         = ["15.4", "15.5"]
-    distro_version_rhel         = ["8.8", "9.1"]
-    distro_version_sles         = ["v15_sp5_standard"]
-    distro_version_ubuntu       = ["18.04", "20.04", "22.04"]
+    aws_region            = ["us-east-1", "us-west-2"]
+    distro_version_amzn2  = ["2"]
+    distro_version_leap   = ["15.4", "15.5"]
+    distro_version_rhel   = ["8.8", "9.1"]
+    distro_version_sles   = ["v15_sp5_standard"]
+    distro_version_ubuntu = ["18.04", "20.04", "22.04"]
   }
   seals = ["awskms", "pkcs11", "shamir"]
   tags = merge({

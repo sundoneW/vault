@@ -99,7 +99,6 @@ locals {
     }
   }
   seal_secondary = local.seals_secondary[var.seal_type_secondary]
-  # is_suse_distro = var.distro == "sles" || var.distro == "leap" ? true : false
   storage_config = [for idx, host in var.target_hosts : (var.storage_backend == "raft" ?
     merge(
       {
@@ -144,7 +143,7 @@ locals {
 # the key data that was passed in via seal attributes.
 module "maybe_configure_hsm" {
   source = "../softhsm_distribute_vault_keys"
-  count = (var.seal_type == "pkcs11" || var.seal_type_secondary == "pkcs11") ? 1 : 0
+  count  = (var.seal_type == "pkcs11" || var.seal_type_secondary == "pkcs11") ? 1 : 0
 
   hosts        = var.target_hosts
   token_base64 = local.token_base64
@@ -153,7 +152,7 @@ module "maybe_configure_hsm" {
 module "maybe_configure_hsm_secondary" {
   source     = "../softhsm_distribute_vault_keys"
   depends_on = [module.maybe_configure_hsm]
-  count = (var.seal_type == "pkcs11" || var.seal_type_secondary == "pkcs11") ? 1 : 0
+  count      = (var.seal_type == "pkcs11" || var.seal_type_secondary == "pkcs11") ? 1 : 0
 
   hosts        = var.target_hosts
   token_base64 = local.token_base64_secondary

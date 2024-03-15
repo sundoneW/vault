@@ -9,29 +9,18 @@ fail() {
   exit 1
 }
 
+[[ -z "$NETCAT_COMMAND" ]] && fail "NETCAT_COMMAND env variable has not been set"
 [[ -z "$SOCKET_PORT" ]] && fail "SOCKET_PORT env variable has not been set"
 
-# export $NETCAT_COMMAND=nc
-
-# if [ "$DISTRO" != "ubuntu" ]; then
-#   export NETCAT_COMMAND=ncat
-# fi
-
 socket_listener_procs() {
-  # pgrep -x nc
-  # pgrep -x ncat
   pgrep -x ${NETCAT_COMMAND}
 }
 
 kill_socket_listener() {
-  # pkill nc
-  # pkill ncat
   pkill  ${NETCAT_COMMAND}
 }
 
 test_socket_listener() {
-  # nc -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
-  # ncat -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
    ${NETCAT_COMMAND} -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
 }
 

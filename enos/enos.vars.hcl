@@ -37,6 +37,9 @@
 # resources.
 # project_name = "vault-enos-integration"
 
+# distro_version_amzn2 is the version of Amazon Linux 2 to use for "distro:amzn2" variants
+# distro_version_amzn2 = "2"
+
 # distro_version_leap is the version of openSUSE Leap to use for "distro:leap" variants
 # distro_version_leap = "15.5" // or "15.4"
 
@@ -44,7 +47,7 @@
 # distro_version_rhel = "9.1" // or "8.8"
 
 # distro_version_sles is the version of SUSE SLES to use for "distro:sles" variants.
-# distro_version_sles = "v15_sp5_standard" // or "v15_sp4_standard"
+# distro_version_sles = "v15_sp5_standard"
 
 # distro_version_ubuntu is the version of ubuntu to use for "distro:ubuntu" variants
 # distro_version_ubuntu = "22.04" // or "20.04", "18.04"

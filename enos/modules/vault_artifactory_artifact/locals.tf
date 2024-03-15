@@ -6,18 +6,18 @@ locals {
   // file name extensions for the install packages of vault for the various architectures, distributions and editions
   package_extensions = {
     amd64 = {
-      amzn2 = "-1.x86_64.rpm"
-      leap         = "-1.x86_64.rpm"
-      rhel         = "-1.x86_64.rpm"
-      sles         = "-1.x86_64.rpm"
-      ubuntu       = "-1_amd64.deb"
+      amzn2  = "-1.x86_64.rpm"
+      leap   = "-1.x86_64.rpm"
+      rhel   = "-1.x86_64.rpm"
+      sles   = "-1.x86_64.rpm"
+      ubuntu = "-1_amd64.deb"
     }
     arm64 = {
-      amzn2 = "-1.aarch64.rpm"
-      leap         = "-1.aarch64.rpm"
-      rhel         = "-1.aarch64.rpm"
-      sles         = "-1.aarch64.rpm"
-      ubuntu       = "-1_arm64.deb"
+      amzn2  = "-1.aarch64.rpm"
+      leap   = "-1.aarch64.rpm"
+      rhel   = "-1.aarch64.rpm"
+      sles   = "-1.aarch64.rpm"
+      ubuntu = "-1_arm64.deb"
     }
   }
 

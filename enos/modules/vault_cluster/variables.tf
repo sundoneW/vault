@@ -103,7 +103,7 @@ variable "consul_release" {
 }
 
 variable "distro" {
-  type = string
+  type        = string
   description = "The Linux distro being used"
 }
 
