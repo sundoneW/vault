@@ -42,10 +42,17 @@ scenario "replication" {
       edition        = ["ce", "ent", "ent.fips1402"]
     }
     
-    # non-SAP, non-BYOS SLES AMIs in the versions we use are only offered for amd64
+    # arm64 AMIs are not offered for Leap 15.4
     exclude {
-      distro = ["sles"]
+      distro = ["leap"]
       arch   = ["arm64"]
+    }
+
+    # softhsm packages not available for leap/sles; softhsm functionalities
+    # problematic on amzn2
+    exclude {
+      seal    = ["pkcs11"]
+      distro = ["amzn2", "leap", "sles"]
     }
   }
 
@@ -60,7 +67,7 @@ scenario "replication" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amazon_linux = provider.enos.ec2_user
+      amzn2 = provider.enos.ec2_user
       leap         = provider.enos.ec2_user
       rhel         = provider.enos.ec2_user
       sles         = provider.enos.ec2_user
@@ -109,7 +116,7 @@ scenario "replication" {
   }
 
   // This step reads the contents of the backend license if we're using a Consul backend and
-  // the edition is "ent".
+  // an "ent" Consul edition.
   step "read_backend_license" {
     skip_step = (matrix.primary_backend == "raft" && matrix.secondary_backend == "raft") || matrix.consul_edition == "ce"
     module    = module.read_license
@@ -297,7 +304,7 @@ scenario "replication" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
@@ -358,7 +365,7 @@ scenario "replication" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
@@ -654,7 +661,7 @@ scenario "replication" {
         edition = matrix.consul_edition
         version = matrix.consul_version
       } : null
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       force_unseal         = matrix.primary_seal == "shamir"
       initialize_cluster   = false

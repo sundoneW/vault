@@ -15,14 +15,6 @@ terraform {
 data "enos_environment" "localhost" {}
 
 locals {
-  # package_install_env = {
-  #   arch = {
-  #     "amd64" = "x86_64"
-  #     "arm64" = "aarch64"
-  #   }
-  #   "packages"        = join(" ", var.packages)
-  #   # "package_manager" = var.package_manager
-  # }
   audit_device_file_path = "/var/log/vault/vault_audit.log"
   audit_socket_port      = "9090"
   bin_path               = "${var.install_dir}/vault"
@@ -45,6 +37,13 @@ locals {
     "pkcs11" = null
   }
   leader = toset(slice(local.instances, 0, 1))
+  netcat_command = {
+    amzn2 = "nc"
+    leap         = "netcat"
+    rhel         = "nc"
+    sles         = "ncat"
+    ubuntu       = "netcat"
+  }
   recovery_shares = {
     "awskms" = 5
     "shamir" = null
@@ -74,8 +73,21 @@ resource "enos_bundle_install" "consul" {
   }
 }
 
+# We run install_packages before we install Vault because for some combinations of
+# certain Linux distros and artifact types (e.g. SLES and RPM packages), there may
+# be packages that are required to perform Vault installation (e.g. openssl).
+module "install_packages" {
+  source = "../install_packages"
+  
+  hosts    = var.target_hosts
+  packages = var.packages
+}
+
 resource "enos_bundle_install" "vault" {
   for_each = var.target_hosts
+  depends_on = [
+    module.install_packages, // Don't race for the package manager locks with install_packages
+  ]
 
   destination = var.install_dir
   release     = var.release == null ? var.release : merge({ product = "vault" }, var.release)
@@ -89,21 +101,10 @@ resource "enos_bundle_install" "vault" {
   }
 }
 
-module "install_packages" {
-  source = "../install_packages"
-  depends_on = [
-    enos_bundle_install.vault, // Don't race for the package manager locks with vault install
-  ]
-
-  hosts    = var.target_hosts
-  packages = var.packages
-}
-
 resource "enos_consul_start" "consul" {
   for_each = enos_bundle_install.consul
 
   bin_path = local.consul_bin_path
-  data_dir = var.consul_data_dir
   config = {
     bind_addr        = "{{ GetPrivateInterfaces | include \"type\" \"IP\" | sort \"default\" |  limit 1 | attr \"address\"}}"
     data_dir         = var.consul_data_dir
@@ -115,6 +116,7 @@ resource "enos_consul_start" "consul" {
     log_level        = var.consul_log_level
     log_file         = var.consul_log_file
   }
+  data_dir = var.consul_data_dir
   license   = var.consul_license
   unit_name = "consul"
   username  = "consul"
@@ -282,6 +284,7 @@ resource "enos_remote_exec" "create_audit_log_dir" {
 # listener is running.
 resource "enos_remote_exec" "start_audit_socket_listener" {
   depends_on = [
+    module.install_packages,
     module.start_vault,
     enos_vault_unseal.leader,
     enos_vault_unseal.followers,
@@ -293,6 +296,7 @@ resource "enos_remote_exec" "start_audit_socket_listener" {
   ])
 
   environment = {
+    NETCAT_COMMAND = local.netcat_command[var.distro]
     SOCKET_PORT = local.audit_socket_port
   }
 

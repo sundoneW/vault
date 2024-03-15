@@ -11,16 +11,28 @@ fail() {
 
 [[ -z "$SOCKET_PORT" ]] && fail "SOCKET_PORT env variable has not been set"
 
+# export $NETCAT_COMMAND=nc
+
+# if [ "$DISTRO" != "ubuntu" ]; then
+#   export NETCAT_COMMAND=ncat
+# fi
+
 socket_listener_procs() {
-  pgrep -x nc
+  # pgrep -x nc
+  # pgrep -x ncat
+  pgrep -x ${NETCAT_COMMAND}
 }
 
 kill_socket_listener() {
-  pkill nc
+  # pkill nc
+  # pkill ncat
+  pkill  ${NETCAT_COMMAND}
 }
 
 test_socket_listener() {
-  nc -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
+  # nc -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
+  # ncat -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
+   ${NETCAT_COMMAND} -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
 }
 
 start_socket_listener() {
@@ -32,6 +44,8 @@ start_socket_listener() {
   # Run nc to listen on port 9090 for the socket auditor. We spawn nc
   # with nohup to ensure that the listener doesn't expect a SIGHUP and
   # thus block the SSH session from exiting or terminating on exit.
+  # nohup nc -kl "$SOCKET_PORT" >> /tmp/vault-socket.log 2>&1 < /dev/null &
+  # nohup ncat -kl "$SOCKET_PORT" >> /tmp/vault-socket.log 2>&1 < /dev/null &
   nohup nc -kl "$SOCKET_PORT" >> /tmp/vault-socket.log 2>&1 < /dev/null &
 }
 
@@ -42,6 +56,7 @@ read_log() {
 }
 
 main() {
+
   if socket_listener_procs; then
     # Clean up old nc's that might not be working
     kill_socket_listener

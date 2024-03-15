@@ -106,7 +106,7 @@ sample "release_ce_linux_arm64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel"]
+      distro          = ["amzn2", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -117,7 +117,7 @@ sample "release_ce_linux_arm64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel"]
+      distro          = ["amzn2", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -128,7 +128,7 @@ sample "release_ce_linux_arm64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel"]
+      distro          = ["amzn2", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -139,7 +139,7 @@ sample "release_ce_linux_arm64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel"]
+      distro          = ["amzn2", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -154,7 +154,7 @@ sample "release_ce_linux_amd64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel", "sles"]
+      distro          = ["amzn2", "leap", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -165,7 +165,7 @@ sample "release_ce_linux_amd64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel", "sles"]
+      distro          = ["amzn2", "leap", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -176,7 +176,7 @@ sample "release_ce_linux_amd64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel", "sles"]
+      distro          = ["amzn2", "leap", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -187,7 +187,7 @@ sample "release_ce_linux_amd64_rpm" {
       artifact_source = ["artifactory"]
       artifact_type   = ["package"]
       consul_edition  = ["ce"]
-      distro          = ["amazon_linux", "leap", "rhel", "sles"]
+      distro          = ["amzn2", "leap", "rhel", "sles"]
       edition         = ["ce"]
     }
   }
@@ -247,6 +247,11 @@ sample "release_ce_linux_arm64_zip" {
       artifact_type   = ["bundle"]
       consul_edition  = ["ce"]
       edition         = ["ce"]
+
+      # arm64 AMIs not offered for all versions of Leap
+      exclude {
+        distro = ["leap"]
+      }
     }
   }
 
@@ -256,6 +261,11 @@ sample "release_ce_linux_arm64_zip" {
       artifact_source = ["artifactory"]
       artifact_type   = ["bundle"]
       edition         = ["ce"]
+
+      # arm64 AMIs not offered for all versions of Leap
+      exclude {
+        distro = ["leap"]
+      }
     }
   }
 
@@ -266,6 +276,11 @@ sample "release_ce_linux_arm64_zip" {
       artifact_type   = ["bundle"]
       consul_edition  = ["ce"]
       edition         = ["ce"]
+
+      # arm64 AMIs not offered for all versions of Leap
+      exclude {
+        distro = ["leap"]
+      }
     }
   }
 
@@ -276,6 +291,11 @@ sample "release_ce_linux_arm64_zip" {
       artifact_type   = ["bundle"]
       consul_edition  = ["ce"]
       edition         = ["ce"]
+
+      # arm64 AMIs not offered for all versions of Leap
+      exclude {
+        distro = ["leap"]
+      }
     }
   }
 }

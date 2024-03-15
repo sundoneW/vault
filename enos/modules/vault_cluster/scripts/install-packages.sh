@@ -39,13 +39,6 @@ elif [ "$PACKAGE_MANAGER" = "zypper" ]; then
 
   # shellcheck disable=SC2068,SC2086
   sudo zypper install --no-confirm ${PACKAGES[@]} || ( sudo SUSEConnect -p PackageHub/$DISTRO_VERSION/$ARCH && sudo zypper install --no-confirm ${PACKAGES[@]})
-  # TO DO: remove, we do this earlier in the module
-  # # For SUSE distros on arm64 architecture, we need to manually install these two
-  # # packages in order to install Vault RPM packages later.
-  # if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-  #   sudo zypper install --no-confirm libcap-progs
-  #   sudo zypper install --no-confirm openssl
-  # fi
 else
   echo "No matching package manager provided."
   exit 1

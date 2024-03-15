@@ -34,10 +34,6 @@ scenario "ui" {
       "Project" : "Enos",
       "Environment" : "ci"
     }, var.tags)
-    vault_install_dir_packages = {
-      rhel   = "/bin"
-      ubuntu = "/usr/bin"
-    }
     vault_install_dir  = var.vault_install_dir
     vault_license_path = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
     vault_tag_key      = "Type" // enos_vault_start expects Type as the tag key
@@ -80,7 +76,7 @@ scenario "ui" {
   }
 
   // This step reads the contents of the backend license if we're using a Consul backend and
-  // the edition is "ent".
+  // an "ent" Consul edition.
   step "read_backend_license" {
     skip_step = matrix.backend == "raft" || matrix.consul_edition == "ce"
     module    = module.read_license
@@ -177,9 +173,9 @@ scenario "ui" {
         edition = matrix.consul_edition
         version = local.consul_version
       } : null
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
-      install_dir          = local.vault_install_dir
+      install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
       local_artifact_path  = local.bundle_path
       package_manager      = global.package_manager[local.distro]

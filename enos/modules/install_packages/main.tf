@@ -15,6 +15,8 @@ locals {
     "arm64" = "aarch64"
   }
   package_manager = {
+    # Note: though we generally use "amzn2" as our distro name for Amazon Linux 2, 
+    # enos_host_info.hosts[each.key].distro returns "amzn", so that is what we reference here.
     "amzn"  = "yum"
     "opensuse-leap" = "zypper"
     "rhel"          = "yum"
@@ -22,12 +24,25 @@ locals {
     "ubuntu"        = "apt"
   }
   distro_repos = {
-    "amzn"  = []
-    "opensuse-leap" = []
-    "rhel"          = []
-    # TO DO: need to find a way to not hardcode the SLE SP version here
-    "sles"     = ["https://download.opensuse.org/repositories/network:utilities/SLE_15_SP5/network:utilities.repo"]
-    "ubuntu"        = []
+    "amzn"  = {
+      "2" = []
+    }
+    "opensuse-leap" = {
+      "15.4" = []
+      "15.5" = []
+    }
+    "rhel"          = {
+      "8.8" = []
+      "9.1" = []
+    }
+    "sles"     = {
+      "15.5" = ["https://download.opensuse.org/repositories/network:utilities/SLE_15_SP5/network:utilities.repo"]
+    }
+    "ubuntu"        = {
+      "18.04" = []
+      "20.04" = []
+      "22.04" = []
+    }
   }
 }
 
@@ -73,9 +88,12 @@ resource "enos_remote_exec" "distro_repo_setup" {
 
   environment = {
     DISTRO = enos_host_info.hosts[each.key].distro
-    DISTRO_REPOS = length(local.distro_repos[enos_host_info.hosts[each.key].distro]) >= 1 ? join(" ", local.distro_repos[enos_host_info.hosts[each.key].distro]) : ""
+    # DISTRO_VERSION = enos_host_info.hosts[each.key].distro_version
+    DISTRO_REPOS = length(local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) >= 1 ? join(" ", local.distro_repos[enos_host_info.hosts[each.key].distro][enos_host_info.hosts[each.key].distro_version]) : ""
     RETRY_INTERVAL  = var.retry_interval
     TIMEOUT_SECONDS = var.timeout
+    DISTRO_NAME = enos_host_info.hosts[each.key].distro
+    DISTRO_VERSION = enos_host_info.hosts[each.key].distro_version
   }
 
   scripts = [abspath("${path.module}/scripts/distro-repo-setup.sh")]

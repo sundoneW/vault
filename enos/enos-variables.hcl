@@ -69,10 +69,10 @@ variable "project_name" {
   default     = "vault-enos-integration"
 }
 
-variable "distro_version_amazon_linux" {
-  description = "The version of Amazon Linux to use"
+variable "distro_version_amzn2" {
+  description = "The version of Amazon Linux 2 to use"
   type        = string
-  default     = "amzn2" // currently this is the only version we support
+  default     = "2" // currently this is the only version we support
 }
 
 variable "distro_version_leap" {
@@ -90,7 +90,7 @@ variable "distro_version_rhel" {
 variable "distro_version_sles" {
   description = "The version of SUSE SLES to use"
   type        = string
-  default     = "v15_sp5_standard" // or "v15_sp4_standard"
+  default     = "v15_sp5_standard" // currently this is the only version we support
 }
 
 variable "distro_version_ubuntu" {

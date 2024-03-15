@@ -6,8 +6,6 @@ scenario "autopilot" {
     arch            = global.archs
     artifact_source = global.artifact_sources
     artifact_type   = global.artifact_types
-    consul_edition  = global.consul_editions
-    consul_version  = global.consul_versions
     distro          = global.distros
     edition         = global.editions
     initial_version = global.upgrade_initial_versions
@@ -37,10 +35,17 @@ scenario "autopilot" {
       edition = ["ce", "ent", "ent.fips1402"]
     }
     
-    # non-SAP, non-BYOS SLES AMIs in the versions we use are only offered for amd64
+    # arm64 AMIs are not offered for Leap 15.4
     exclude {
-      distro = ["sles"]
+      distro = ["leap"]
       arch   = ["arm64"]
+    }
+
+    # softhsm packages not available for leap/sles; softhsm functionalities
+    # problematic on amzn2
+    exclude {
+      seal    = ["pkcs11"]
+      distro = ["amzn2", "leap", "sles"]
     }
   }
 
@@ -55,14 +60,14 @@ scenario "autopilot" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amazon_linux = provider.enos.ec2_user
+      amzn2 = provider.enos.ec2_user
       leap         = provider.enos.ec2_user
       rhel         = provider.enos.ec2_user
       sles         = provider.enos.ec2_user
       ubuntu       = provider.enos.ubuntu
     }
     manage_service                     = matrix.artifact_type == "bundle"
-    vault_install_dir                  = matrix.artifact_type == "bundle" ? var.vault_install_dir : global.vault_install_dir_packages[matrix.distro]
+    vault_install_dir = global.vault_install_dir[matrix.artifact_type]
     vault_autopilot_default_max_leases = semverconstraint(matrix.initial_version, ">=1.16.0-0") ? "300000" : ""
   }
 
@@ -99,6 +104,7 @@ scenario "autopilot" {
     }
   }
 
+  # TO DO: why don't we have backend read_license here?
   step "read_license" {
     module = module.read_license
 
@@ -169,7 +175,7 @@ scenario "autopilot" {
     variables {
       arch                 = matrix.arch
       cluster_name         = step.create_vault_cluster_targets.cluster_name
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       enable_audit_devices = var.vault_enable_audit_devices
       install_dir          = global.vault_install_dir[matrix.artifact_type]
       license              = matrix.edition != "ce" ? step.read_license.license : null
@@ -256,7 +262,7 @@ scenario "autopilot" {
       artifactory_release         = matrix.artifact_source == "artifactory" ? step.build_vault.vault_artifactory_release : null
       enable_audit_devices        = var.vault_enable_audit_devices
       cluster_name                = step.create_vault_cluster_targets.cluster_name
-      distro_version_suse  = (matrix.distro == "sles" || matrix.distro == "leap") ? global.distro_version[matrix.distro] : null
+      distro = matrix.distro
       log_level                   = var.vault_log_level
       force_unseal                = matrix.seal == "shamir"
       initialize_cluster          = false
@@ -265,7 +271,7 @@ scenario "autopilot" {
       local_artifact_path         = local.artifact_path
       manage_service              = local.manage_service
       package_manager             = global.package_manager[matrix.distro]
-      packages                    = global.packages
+      packages                    = concat(global.packages, global.distro_packages[matrix.distro])
       root_token                  = step.create_vault_cluster.root_token
       seal_ha_beta                = matrix.seal_ha_beta
       seal_attributes             = step.create_seal_key.attributes
@@ -623,18 +629,18 @@ scenario "autopilot" {
     value       = step.create_vault_cluster.unseal_keys_hex
   }
 
-  output "upgrade_hosts" {
-    description = "The Vault cluster target hosts"
-    value       = step.upgrade_vault_cluster_with_autopilot.target_hosts
-  }
+  // output "upgrade_hosts" {
+  //   description = "The Vault cluster target hosts"
+  //   value       = step.upgrade_vault_cluster_with_autopilot.target_hosts
+  // }
 
-  output "upgrade_private_ips" {
-    description = "The Vault cluster private IPs"
-    value       = step.upgrade_vault_cluster_with_autopilot.private_ips
-  }
+  // output "upgrade_private_ips" {
+  //   description = "The Vault cluster private IPs"
+  //   value       = step.upgrade_vault_cluster_with_autopilot.private_ips
+  // }
 
-  output "upgrade_public_ips" {
-    description = "The Vault cluster public IPs"
-    value       = step.upgrade_vault_cluster_with_autopilot.public_ips
-  }
+  // output "upgrade_public_ips" {
+  //   description = "The Vault cluster public IPs"
+  //   value       = step.upgrade_vault_cluster_with_autopilot.public_ips
+  // }
 }

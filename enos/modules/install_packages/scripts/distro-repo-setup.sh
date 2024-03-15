@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
@@ -10,14 +10,16 @@ fail() {
 }
 
 [[ -z "$DISTRO" ]] && fail "DISTRO env variable has not been set"
-[[ -z "$DISTRO_REPOS" ]] && fail "DISTRO env variable has not been set"
 [[ -z "$RETRY_INTERVAL" ]] && fail "RETRY_INTERVAL env variable has not been set"
 [[ -z "$TIMEOUT_SECONDS" ]] && fail "TIMEOUT_SECONDS env variable has not been set"
+
+# fail "DISTRO_VERSION is ${DISTRO_VERSION}"
+# fail "DISTRO is ${DISTRO}"
 
 setup_repos() {
   # If we don't have any repos on the list for this distro, no action needed.
   if [ ${#DISTRO_REPOS[@]} -lt 1 ]; then
-    echo "No repos required for the packages for this Linux distro."
+    echo "DISTRO_REPOS is empty; No repos required for the packages for this Linux distro."
     return 0
   fi
 

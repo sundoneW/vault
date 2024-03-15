@@ -17,31 +17,49 @@ fail() {
 install_packages() {
   if [ "$PACKAGES" = "__skip" ]; then
     return 0
-  fi
+  fi 
 
+  set -x
   echo "Installing Dependencies: $PACKAGES"
 
   # Use the default package manager of the current Linux distro to install packages
   if [ "$PACKAGE_MANAGER" = "apt" ]; then
-    cd /tmp
+    set -x
     sudo apt update
-    # Disable this shellcheck rule about double-quoting array expansions; if we use
-    # double quotes on ${PACKAGES[@]}, it does not take the packages as separate
-    # arguments.
-    # shellcheck disable=SC2068,SC2086
-    sudo apt install -y ${PACKAGES[@]}
-  elif [ "$PACKAGE_MANAGER" = "yum" ]; then
-    cd /tmp
-    # shellcheck disable=SC2068,SC2086
-    sudo yum -y install ${PACKAGES[@]}
+    for package in ${PACKAGES}; do
+      if [ $(dpkg -s "${package}") ]; then
+        continue
+      else
+        echo "Installing ${package}"
+        sudo apt install -y "${package}"
+      fi
+    done
+  elif [ "$PACKAGE_MANAGER" = "yum" ]; then    
+    set -x
+    for package in ${PACKAGES}; do
+      if [ $(sudo yum list installed | grep -q "${package}") ]; then
+        continue
+      else
+        echo "Installing ${package}"
+        sudo yum -y install "${package}"
+      fi
+    done
+    # eval sudo yum -y install "${PACKAGES[@]}"
   elif [ "$PACKAGE_MANAGER" = "zypper" ]; then
-    # Need to refresh repositories first, otherwise searching for them can sometimes fail
+    set -x
+    cd /tmp
     sudo zypper --gpg-auto-import-keys ref
-    # shellcheck disable=SC2068,SC2086
-    sudo zypper --non-interactive install ${PACKAGES[@]}
+    for package in ${PACKAGES}; do
+      if rpm -q "${package}"; then
+        continue
+      else
+        echo "Installing ${package}"
+        sudo zypper --non-interactive install "${package}"
+        date
+      fi
+    done
   else
-    echo "No matching package manager provided."
-    exit 1
+    fail "No matching package manager provided."
   fi
 }
 

@@ -32,18 +32,17 @@ scenario "smoke" {
       edition = ["ce", "ent", "ent.fips1402"]
     }
 
-    # TO DO: update comment and add Leap exclusion to all scenarios
-    # non-SAP, non-BYOS SLES AMIs in the versions we use are only offered for amd64
+    # arm64 AMIs are not offered for Leap 15.4
     exclude {
-      distro = ["leap","sles"]
+      distro = ["leap"]
       arch   = ["arm64"]
     }
 
-    # TO DO: add this exclusion to all scenarios
-    # softhsm packages not available for SUSE distros
+    # softhsm packages not available for leap/sles; softhsm functionalities
+    # problematic on amzn2
     exclude {
       seal    = ["pkcs11"]
-      distro = ["leap", "sles"]
+      distro = ["amzn2", "leap", "sles"]
     }
   }
 
@@ -58,7 +57,7 @@ scenario "smoke" {
   locals {
     artifact_path = matrix.artifact_source != "artifactory" ? abspath(var.vault_artifact_path) : null
     enos_provider = {
-      amazon_linux = provider.enos.ec2_user
+      amzn2 = provider.enos.ec2_user
       leap         = provider.enos.ec2_user
       rhel         = provider.enos.ec2_user
       sles         = provider.enos.ec2_user
@@ -106,7 +105,7 @@ scenario "smoke" {
   }
 
   // This step reads the contents of the backend license if we're using a Consul backend and
-  // the edition is "ent".
+  // an "ent" Consul edition.
   step "read_backend_license" {
     skip_step = matrix.backend == "raft" || matrix.consul_edition == "ce"
     module    = module.read_license

@@ -9,52 +9,49 @@
 
 locals {
   architectures      = toset(["arm64", "x86_64"])
-  amazon_owner_id    = "591542846629"
+  amzn2_owner_id    = "591542846629"
   canonical_owner_id = "099720109477"
   sles_owner_id      = "013907871322"
   suse_owner_id      = "679593333241"
   rhel_owner_id      = "309956199498"
   ids = {
     "arm64" = {
+      "amzn2" = {
+        "2" = data.aws_ami.amzn2["arm64"].id
+      }
       "rhel" = {
         "8.8" = data.aws_ami.rhel_88["arm64"].id
         "9.1" = data.aws_ami.rhel_91["arm64"].id
+      }
+      "sles" = {
+        "v15_sp5_standard" = data.aws_ami.sles_15_sp5_standard["arm64"].id
       }
       "ubuntu" = {
         "18.04" = data.aws_ami.ubuntu_1804["arm64"].id
         "20.04" = data.aws_ami.ubuntu_2004["arm64"].id
         "22.04" = data.aws_ami.ubuntu_2204["arm64"].id
       }
-      "amazon_linux" = {
-        "amzn2" = data.aws_ami.amazon_linux_2["arm64"].id
-      }
-      # no longer available
-      # "leap" = {
-      #   "15.4" = data.aws_ami.leap_154["arm64"].id
-      #   "15.5" = data.aws_ami.leap_155["arm64"].id
-      # }
     }
     "amd64" = {
+      "amzn2" = {
+        "2" = data.aws_ami.amzn2["x86_64"].id
+      }
+       "leap" = {
+        "15.4" = data.aws_ami.leap_154.id
+        "15.5" = data.aws_ami.leap_155.id
+      }
       "rhel" = {
         "7.9" = data.aws_ami.rhel_79.id
         "8.8" = data.aws_ami.rhel_88["x86_64"].id
         "9.1" = data.aws_ami.rhel_91["x86_64"].id
       }
+      "sles" = {
+        "v15_sp5_standard" = data.aws_ami.sles_15_sp5_standard["x86_64"].id
+      }
       "ubuntu" = {
         "18.04" = data.aws_ami.ubuntu_1804["x86_64"].id
         "20.04" = data.aws_ami.ubuntu_2004["x86_64"].id
         "22.04" = data.aws_ami.ubuntu_2204["x86_64"].id
-      }
-      "amazon_linux" = {
-        "amzn2" = data.aws_ami.amazon_linux_2["x86_64"].id
-      }
-      "leap" = {
-        "15.4" = data.aws_ami.leap_154.id
-        "15.5" = data.aws_ami.leap_155.id
-      }
-      "sles" = {
-        "v15_sp4_standard" = data.aws_ami.sles_15_sp4_standard["x86_64"].id
-        "v15_sp5_standard" = data.aws_ami.sles_15_sp5_standard["x86_64"].id
       }
     }
   }
@@ -194,7 +191,7 @@ data "aws_ami" "rhel_91" {
   owners = [local.rhel_owner_id]
 }
 
-data "aws_ami" "amazon_linux_2" {
+data "aws_ami" "amzn2" {
   most_recent = true
   for_each    = local.architectures
 
@@ -208,44 +205,16 @@ data "aws_ami" "amazon_linux_2" {
     values = [each.value]
   }
 
-  owners = [local.amazon_owner_id]
-}
-
-data "aws_ami" "sles_15_sp4_standard" {
-  most_recent = true
-  for_each    = local.architectures
-
-  # filter {
-  #   name   = "description"
-  #   values = ["SUSE Linux Enterprise Server 15 SP4 (HVM*"]
-  # }
-
-  filter {
-    name   = "name"
-    # TO DO: This is the only non-SAP version of SLES 15 SP4 that is available as an image; not sure if it's appropriate for our usage?
-    values = ["suse-sles-15-sp4-chost-byos-v*"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = [each.value]
-  }
-
-  owners = [local.sles_owner_id]
+  owners = [local.amzn2_owner_id]
 }
 
 data "aws_ami" "sles_15_sp5_standard" {
   most_recent = true
   for_each    = local.architectures
 
-  # filter {
-  #   name   = "description"
-  #   values = ["SUSE Linux Enterprise Server 15 SP5 (HVM*"]
-  # }
-
   filter {
     name = "name"
-    values = ["suse-sles-15-sp5-v*"]
+    values = ["suse-sles-15-sp5-v*-hvm-*"]
   }
 
   filter {
@@ -258,7 +227,6 @@ data "aws_ami" "sles_15_sp5_standard" {
 
 data "aws_ami" "leap_154" {
   most_recent = true
-  # for_each    = local.architectures
 
   filter {
     name   = "name"
@@ -267,7 +235,6 @@ data "aws_ami" "leap_154" {
 
   filter {
     name   = "architecture"
-    # values = [each.value]
     values = ["x86_64"]
   }
 
@@ -285,7 +252,9 @@ data "aws_ami" "leap_155" {
 
   filter {
     name   = "architecture"
-    # values = [each.value]
+    # Note: arm64 AMIs are offered for Leap 15.5, but not 15.4. For now we will
+    # only use x86_64 for both in order to not introduce complexity in our matrix
+    # exclusions.
     values = ["x86_64"]
   }
 
