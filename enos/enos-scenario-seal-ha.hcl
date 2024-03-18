@@ -370,11 +370,11 @@ scenario "seal_ha" {
     }
 
     variables {
-      distro         = matrix.distro
-      cluster_name   = step.create_vault_cluster_targets.cluster_name
-      install_dir    = global.vault_install_dir[matrix.artifact_type]
-      license        = matrix.edition != "ce" ? step.read_vault_license.license : null
-      manage_service = local.manage_service
+      distro                    = matrix.distro
+      cluster_name              = step.create_vault_cluster_targets.cluster_name
+      install_dir               = global.vault_install_dir[matrix.artifact_type]
+      license                   = matrix.edition != "ce" ? step.read_vault_license.license : null
+      manage_service            = local.manage_service
       seal_attributes           = step.create_primary_seal_key.attributes
       seal_attributes_secondary = step.create_secondary_seal_key.attributes
       seal_type                 = matrix.primary_seal
@@ -576,11 +576,11 @@ scenario "seal_ha" {
     }
 
     variables {
-      cluster_name   = step.create_vault_cluster_targets.cluster_name
-      distro         = matrix.distro
-      install_dir    = global.vault_install_dir[matrix.artifact_type]
-      license        = matrix.edition != "ce" ? step.read_vault_license.license : null
-      manage_service = local.manage_service
+      cluster_name    = step.create_vault_cluster_targets.cluster_name
+      distro          = matrix.distro
+      install_dir     = global.vault_install_dir[matrix.artifact_type]
+      license         = matrix.edition != "ce" ? step.read_vault_license.license : null
+      manage_service  = local.manage_service
       seal_alias      = "secondary"
       seal_attributes = step.create_secondary_seal_key.attributes
       seal_type       = matrix.secondary_seal
