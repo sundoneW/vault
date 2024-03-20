@@ -13,15 +13,15 @@ fail() {
 [[ -z "$SOCKET_PORT" ]] && fail "SOCKET_PORT env variable has not been set"
 
 socket_listener_procs() {
-  pgrep -x ${NETCAT_COMMAND}
+  pgrep -x "${NETCAT_COMMAND}"
 }
 
 kill_socket_listener() {
-  pkill  ${NETCAT_COMMAND}
+  pkill  "${NETCAT_COMMAND}"
 }
 
 test_socket_listener() {
-   ${NETCAT_COMMAND} -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
+   "${NETCAT_COMMAND}" -zvw 2 127.0.0.1 "$SOCKET_PORT" < /dev/null
 }
 
 start_socket_listener() {

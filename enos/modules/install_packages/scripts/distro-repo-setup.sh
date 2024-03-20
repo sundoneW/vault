@@ -25,7 +25,7 @@ setup_repos() {
   # non-root user (known bug).
   sudo cloud-init status --wait
 
-  if [ ${DISTRO} == "sles" ]; then
+  if [ "${DISTRO}" == "sles" ]; then
     for repo in ${DISTRO_REPOS}; do
       sudo zypper addrepo "${repo}"
     done

@@ -104,7 +104,6 @@ scenario "autopilot" {
     }
   }
 
-  # TO DO: why don't we have backend read_license here?
   step "read_license" {
     module = module.read_license
 

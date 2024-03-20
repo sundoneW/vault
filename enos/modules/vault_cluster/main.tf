@@ -45,7 +45,7 @@ locals {
     amzn2  = "nc"
     leap   = "netcat"
     rhel   = "nc"
-    sles   = "ncat"
+    sles   = "nc"
     ubuntu = "netcat"
   }
   recovery_shares = {
@@ -137,6 +137,7 @@ module "start_vault" {
 
   depends_on = [
     enos_consul_start.consul,
+    module.install_packages,
     enos_bundle_install.vault,
   ]
 
