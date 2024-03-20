@@ -107,7 +107,7 @@ scenario "ui" {
       ami_id          = step.ec2_info.ami_ids[local.arch][local.distro][var.distro_version_ubuntu]
       cluster_tag_key = local.vault_tag_key
       common_tags     = local.tags
-      seal_key_names      = step.create_seal_key.resource_names
+      seal_key_names  = step.create_seal_key.resource_names
       vpc_id          = step.create_vpc.id
     }
   }
@@ -124,7 +124,7 @@ scenario "ui" {
       ami_id          = step.ec2_info.ami_ids["arm64"]["ubuntu"]["22.04"]
       cluster_tag_key = local.backend_tag_key
       common_tags     = local.tags
-      seal_key_names      = step.create_seal_key.resource_names
+      seal_key_names  = step.create_seal_key.resource_names
       vpc_id          = step.create_vpc.id
     }
   }
