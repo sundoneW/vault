@@ -37,7 +37,7 @@ install_packages() {
   elif [[ "${PACKAGE_MANAGER}" = "yum" ]] ; then
     set -x
     for package in ${PACKAGES}; do
-      if [ $(sudo yum list installed | grep -q "${package}") ]; then
+      if sudo yum list installed | rpm -q "${package}"; then
         continue
       else
         echo "Installing ${package}"
