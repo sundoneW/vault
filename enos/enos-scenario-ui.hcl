@@ -25,7 +25,7 @@ scenario "ui" {
       "ce"  = ["ui"]
       "ent" = ["ui", "enterprise", "ent"]
     }
-    bundle_path    = abspath(var.vault_artifact_path)
+    artifact_path  = abspath(var.vault_artifact_path)
     distro         = "ubuntu"
     consul_version = "1.17.0"
     seal           = "awskms"
@@ -45,7 +45,7 @@ scenario "ui" {
 
     variables {
       build_tags      = var.vault_local_build_tags != null ? var.vault_local_build_tags : local.build_tags[matrix.edition]
-      bundle_path     = local.bundle_path
+      artifact_path   = local.artifact_path
       goarch          = local.arch
       goos            = "linux"
       product_version = var.vault_product_version
@@ -107,7 +107,7 @@ scenario "ui" {
       ami_id          = step.ec2_info.ami_ids[local.arch][local.distro][var.distro_version_ubuntu]
       cluster_tag_key = local.vault_tag_key
       common_tags     = local.tags
-      seal_names      = step.create_seal_key.resource_names
+      seal_key_names      = step.create_seal_key.resource_names
       vpc_id          = step.create_vpc.id
     }
   }
@@ -124,7 +124,7 @@ scenario "ui" {
       ami_id          = step.ec2_info.ami_ids["arm64"]["ubuntu"]["22.04"]
       cluster_tag_key = local.backend_tag_key
       common_tags     = local.tags
-      seal_names      = step.create_seal_key.resource_names
+      seal_key_names      = step.create_seal_key.resource_names
       vpc_id          = step.create_vpc.id
     }
   }
@@ -173,15 +173,14 @@ scenario "ui" {
         edition = matrix.consul_edition
         version = local.consul_version
       } : null
-      distro               = matrix.distro
+      distro               = local.distro
       enable_audit_devices = var.vault_enable_audit_devices
-      install_dir          = global.vault_install_dir[matrix.artifact_type]
+      install_dir          = local.vault_install_dir
       license              = matrix.edition != "ce" ? step.read_vault_license.license : null
-      local_artifact_path  = local.bundle_path
+      local_artifact_path  = local.artifact_path
       package_manager      = global.package_manager[local.distro]
       packages             = global.distro_packages["ubuntu"]
       seal_ha_beta         = matrix.seal_ha_beta
-      seal_name            = step.create_seal_key.resource_name
       seal_type            = local.seal
       storage_backend      = matrix.backend
       target_hosts         = step.create_vault_cluster_targets.hosts
