@@ -148,8 +148,7 @@ scenario "proxy" {
     }
 
     variables {
-      ami_id = step.ec2_info.ami_ids[matrix.arch][matrix.distro][global.distro_version[matrix.distro]]
-      # ami_id = "ami-08f3662e2d5b3989a"
+      ami_id          = step.ec2_info.ami_ids[matrix.arch][matrix.distro][global.distro_version[matrix.distro]]
       cluster_tag_key = global.vault_tag_key
       common_tags     = global.tags
       seal_key_names  = step.create_seal_key.resource_names

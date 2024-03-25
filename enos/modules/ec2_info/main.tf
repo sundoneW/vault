@@ -235,6 +235,9 @@ data "aws_ami" "leap_154" {
 
   filter {
     name   = "architecture"
+    # Note: arm64 AMIs are offered for Leap 15.5, but not 15.4. For now we will
+    # only use x86_64 for both in order to not introduce complexity in our matrix
+    # exclusions.
     values = ["x86_64"]
   }
 
@@ -243,7 +246,6 @@ data "aws_ami" "leap_154" {
 
 data "aws_ami" "leap_155" {
   most_recent = true
-  # for_each    = local.architectures
 
   filter {
     name   = "name"

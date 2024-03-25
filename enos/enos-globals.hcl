@@ -26,7 +26,6 @@ globals {
     # When installing Vault RPM packages, SLES searches for openssl by a different name
     # than the one that comes pre-installed on the AMI. Therefore we add the
     # "correctly" named one in our package installation before installing Vault.
-    # sles   = ["ncat", "openssl"]
     sles   = ["nc", "openssl"]
     ubuntu = ["netcat"]
   }
