@@ -234,7 +234,7 @@ data "aws_ami" "leap_154" {
   }
 
   filter {
-    name   = "architecture"
+    name = "architecture"
     # Note: arm64 AMIs are offered for Leap 15.5, but not 15.4. For now we will
     # only use x86_64 for both in order to not introduce complexity in our matrix
     # exclusions.
