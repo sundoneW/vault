@@ -30,7 +30,7 @@ export default class AuthMethodModel extends Model {
   @service store;
 
   @belongsTo('mount-config', { async: false, inverse: null }) config; // one-to-none that replaces former fragment
-  @hasMany('auth-config', { polymorphic: true, inverse: 'backend', async: false }) authConfigs;
+  @hasMany('auth-config', { async: false, polymorphic: true, inverse: 'backend' }) authConfigs;
   @attr('string') path;
   @attr('string') accessor;
   @attr('string') name;
